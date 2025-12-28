@@ -1,13 +1,17 @@
-const express = require('express');
-const cors = require('cors');
+import express from "express"
+import cors from "cors"
+
+import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/auth', authRoutes);
+
 app.get('/', (req, res)=>{
   res.send("Eventmate API is running...");
 });
 
-module.exports = app;
+export default app;
