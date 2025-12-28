@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
 
 export const registerUser = async(req, res)=>{
@@ -49,4 +50,63 @@ export const registerUser = async(req, res)=>{
   }
 }
 
-export default registerUser;
+//Login
+
+export const loginUser = async(req, res)=>{
+  
+  try{
+    
+    const {email, password}=req.body;
+    
+    //Check if user exists
+    if(!email || !password){
+      return res.status(400).json({
+        message: "Email and password required"
+      });
+    }
+    
+    //Find user
+    const user = await User.findOne({email}).select("+password");
+    if(!user){
+      res.status(401).json({
+        message: "Invalid credentials"
+      });
+    }
+    
+    //compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if(!isMatch){
+      return res.status(401).json({
+        message: "Invalid credentials"
+      });
+    }
+    
+    //generate jwt token 
+    const token = jwt.sign({
+      userId: user._id,
+      role: user.role
+    },
+    process.env.JWT_SECRET,
+    {expiresIn: "1d"}
+    );
+    
+    //response
+    res.status(200).json({
+      message: "Login successfull",
+      token,
+      user:{
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role
+      }
+    });
+    
+  } catch(error){
+    console.log("Login error: ", error);
+    res.status(500).json({
+      message: "Login error"
+    });
+  }
+}
+
