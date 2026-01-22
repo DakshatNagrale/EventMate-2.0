@@ -5,9 +5,9 @@ const router = express.Router();
 
 router.get("/me", authMiddleware, (req, res)=>{
   res.status(200).json({
-    message: "User profile fetched",
-    user: req.user
-  })
+  message: "User profile fetched",
+  user: req.user
+});
 })
 
 export default router;
