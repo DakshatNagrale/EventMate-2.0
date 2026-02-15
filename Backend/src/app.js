@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import errorMiddleware from "./middleware/error.middleware.js";
+import eventRoutes from "./routes/event.routes.js";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/events", eventRoutes);
 
 // Root route
 app.get("/", (req, res) => res.json({ success: true, message: "EventMate Backend Running" }));

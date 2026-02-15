@@ -1,59 +1,95 @@
 import mongoose from "mongoose";
 
-const EventSchema = new mongoose.Schema({
-  _id: ObjectId,
-  title: String,
-  description: String,
-  category: String,            // Technical, Cultural, Sports, Workshop
-  posterUrl: String,
+const EventSchema = new mongoose.Schema(
+  {
+    title: String,
+    description: String,
+    category: {
+      type: String,
+      enum: ["Technical", "Cultural", "Sports", "Workshop"]
+    },
+    posterUrl: String,
 
-  organizer: {
-    organizerId: ObjectId,
-    name: String,
-    department: String,
-    contactEmail: String,
-    contactPhone: String
+    organizer: {
+      organizerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+      },
+      name: String,
+      department: String,
+      contactEmail: String,
+      contactPhone: String
+    },
+
+    venue: {
+      mode: {
+        type: String,
+        enum: ["ONLINE", "OFFLINE", "HYBRID"]
+      },
+      location: String,
+      googleMapLink: String
+    },
+
+    schedule: {
+      startDate: Date,
+      endDate: Date,
+      startTime: String,
+      endTime: String
+    },
+
+    registration: {
+      isOpen: Boolean,
+      lastDate: Date,
+      maxParticipants: Number,
+      fee: {
+        type: Number,
+        default: 0
+      }
+    },
+
+    attendance: {
+      qrCode: String,
+      totalPresent: {
+        type: Number,
+        default: 0
+      }
+    },
+
+    certificate: {
+      isEnabled: Boolean,
+      templateId: {
+        type: mongoose.Schema.Types.ObjectId
+      },
+      issuedCount: {
+        type: Number,
+        default: 0
+      }
+    },
+
+    feedback: {
+      enabled: Boolean,
+      averageRating: Number
+    },
+
+    status: {
+      type: String,
+      enum: ["Draft", "Published", "Completed", "Cancelled"],
+      default: "Draft"
+    },
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null
+    }
   },
-
-  venue: {
-    mode: String,              // Online / Offline / Hybrid
-    location: String,
-    googleMapLink: String
-  },
-
-  schedule: {
-    startDate: Date,
-    endDate: Date,
-    startTime: String,
-    endTime: String
-  },
-
-  registration: {
-    isOpen: Boolean,
-    lastDate: Date,
-    maxParticipants: Number,
-    fee: Number
-  },
-
-  attendance: {
-    qrCode: String,
-    totalPresent: Number
-  },
-
-  certificate: {
-    isEnabled: Boolean,
-    templateId: ObjectId,
-    issuedCount: Number
-  },
-
-  feedback: {
-    enabled: Boolean,
-    averageRating: Number
-  },
-
-  status: String,              // Draft, Published, Completed, Cancelled
-  createdAt: Date,
-  updatedAt: Date
-});
+  { timestamps: true }
+);
 
 export default mongoose.model("Event", EventSchema);
