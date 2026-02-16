@@ -28,3 +28,9 @@ html {
 .dark::-webkit-scrollbar-thumb:hover {
   background: #6366f1;
 }
+@keyframes pulse {
+  0%, 100% { transform: translate3d(0,0,0) scale(1); opacity: .65; }
+  50% { transform: translate3d(0,0,0) scale(1.08); opacity: .9; }
+}
+html { scroll-behavior: auto !important; }
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }

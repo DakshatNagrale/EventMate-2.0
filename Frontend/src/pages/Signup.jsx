@@ -1,43 +1,102 @@
-import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
+﻿import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import api from "../lib/api";
+import SummaryApi from "../common/SummaryApi";
 
 export default function Signup() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: "",
+    fullName: "",
     email: "",
     password: "",
     confirmPassword: "",
     agree: false,
-  })
+  });
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
-    }
-    window.addEventListener("mousemove", handleMouseMove)
-    return () => window.removeEventListener("mousemove", handleMouseMove)
-  }, [])
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value })
-  }
+    const { name, value, type, checked } = e.target;
+    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: "" });
+    }
+  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log(formData)
-  }
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.fullName) newErrors.fullName = "Full name is required";
+    if (!formData.email) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
+    if (!formData.password) newErrors.password = "Password is required";
+    else if (formData.password.length < 8) newErrors.password = "Password must be at least 8 characters";
+    if (formData.confirmPassword !== formData.password) newErrors.confirmPassword = "Passwords do not match";
+    if (!formData.agree) newErrors.agree = "Please accept the terms to continue";
+    return newErrors;
+  };
 
-  const parallaxX = (mousePosition.x - window.innerWidth / 2) / 50
-  const parallaxY = (mousePosition.y - window.innerHeight / 2) / 50
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSuccessMessage("");
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const email = formData.email;
+      const response = await api({
+        ...SummaryApi.register,
+        data: {
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+        },
+      });
+
+      const apiMessage =
+        response.data?.message || "Registration successful. Check your email for the OTP.";
+      const otp = response.data?.otp;
+      setSuccessMessage(otp ? `${apiMessage} OTP: ${otp}` : apiMessage);
+      setFormData({
+        fullName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        agree: false,
+      });
+
+      setTimeout(() => navigate("/verify-email", { state: { email } }), 800);
+    } catch (error) {
+      const apiError =
+        error.response?.data?.errors?.[0] ||
+        error.response?.data?.message ||
+        "Registration failed. Please try again.";
+      setErrors({ submit: apiError });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const parallaxX = (mousePosition.x - window.innerWidth / 2) / 50;
+  const parallaxY = (mousePosition.y - window.innerHeight / 2) / 50;
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50 relative overflow-hidden">
-
-      {/* Interactive Animated Gradient Blobs Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
           className="absolute w-[600px] h-[600px] top-[-200px] left-[-200px] rounded-full opacity-50 blur-3xl animate-blob-slow"
@@ -71,13 +130,8 @@ export default function Signup() {
 
       <div className="absolute inset-0 bg-gradient-to-t from-white/30 via-transparent to-white/20 pointer-events-none" />
 
-      {/* Content */}
       <section className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 px-6 py-10 items-center min-h-screen">
-
-        {/* ================= LEFT CONTENT ================= */}
-        <div className="space-y-8"> {/* Increased spacing for better rhythm */}
-
-          {/* Back Link + Badge aligned in a flex row */}
+        <div className="space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <Link
               to="/"
@@ -86,7 +140,6 @@ export default function Signup() {
               <ArrowLeft size={16} /> Back
             </Link>
 
-            {/* Fixed: Properly aligned badge */}
             <span className="inline-block px-5 py-1.5 text-xs font-semibold tracking-wider uppercase rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
               Join the Community
             </span>
@@ -108,10 +161,8 @@ export default function Signup() {
           </div>
         </div>
 
-        {/* ================= RIGHT CARD ================= */}
         <div className="flex justify-center lg:justify-end animate-slideUp">
           <div className="w-full max-w-[420px] bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl hover:shadow-3xl transition duration-500 border border-white/20">
-
             <div className="h-1 rounded-t-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
 
             <div className="p-8">
@@ -131,13 +182,14 @@ export default function Signup() {
                 <div>
                   <label className="text-sm font-medium text-gray-700">Full Name</label>
                   <input
-                    name="name"
-                    value={formData.name}
+                    name="fullName"
+                    value={formData.fullName}
                     onChange={handleChange}
                     placeholder="Your Name"
                     required
                     className="mt-1 w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   />
+                  {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
                 </div>
 
                 <div>
@@ -151,6 +203,7 @@ export default function Signup() {
                     required
                     className="mt-1 w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   />
+                  {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
                 </div>
 
                 <div>
@@ -163,6 +216,7 @@ export default function Signup() {
                     required
                     className="mt-1 w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   />
+                  {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
                 </div>
 
                 <div>
@@ -175,6 +229,7 @@ export default function Signup() {
                     required
                     className="mt-1 w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   />
+                  {errors.confirmPassword && <p className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>}
                 </div>
 
                 <div className="flex items-center gap-3 text-sm text-gray-600">
@@ -196,13 +251,26 @@ export default function Signup() {
                     </span>
                   </span>
                 </div>
+                {errors.agree && <p className="text-xs text-red-600">{errors.agree}</p>}
 
                 <button
                   type="submit"
+                  disabled={isLoading}
                   className="w-full mt-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white py-3.5 rounded-xl font-semibold transition-all transform hover:-translate-y-0.5 hover:shadow-lg"
                 >
-                  Sign Up
+                  {isLoading ? "Signing up..." : "Sign Up"}
                 </button>
+
+                {errors.submit && (
+                  <p className="text-sm text-red-600 text-center bg-red-50 py-2 rounded-lg">
+                    {errors.submit}
+                  </p>
+                )}
+                {successMessage && (
+                  <p className="text-sm text-green-700 text-center bg-green-50 py-2 rounded-lg">
+                    {successMessage}
+                  </p>
+                )}
               </form>
 
               <div className="flex items-center my-6">
@@ -226,7 +294,6 @@ export default function Signup() {
         </div>
       </section>
 
-      {/* Custom Animations */}
       <style jsx>{`
         @keyframes blob-slow {
           0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
@@ -264,5 +331,5 @@ export default function Signup() {
         }
       `}</style>
     </main>
-  )
+  );
 }

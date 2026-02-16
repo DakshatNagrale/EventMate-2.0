@@ -5,9 +5,9 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-6 py-12 grid gap-8 md:grid-cols-3">
         {/* Brand Section - subtle lift on hover */}
         <div className="transform transition-all duration-500 hover:-translate-y-1">
-          <h3 className="text-xl font-bold text-primary 
-            bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent 
-            group-hover:from-indigo-700 group-hover:to-purple-700 transition-all duration-500">
+          <h3 className="text-xl font-bold 
+            bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent 
+            transition-all duration-500">
             EventMate
           </h3>
           <p className="text-sm mt-2 text-gray-600 dark:text-gray-400 
