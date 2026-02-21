@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import ContactUs from "../components/ContactUs";
-import eventmateLogo from "../assets/eventmate-logo.png";
-import { motion, useReducedMotion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { motion, useReducedMotion, useScroll } from "framer-motion";
 
 // --- Icons ---
 const SearchIcon = () => (
@@ -42,109 +41,15 @@ const stagger = {
   show: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } },
 };
 
-// --- Preloader Component ---
-const Preloader = ({ onComplete }) => {
-  const sparks = Array.from({ length: 12 });
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-[#05060f] overflow-hidden"
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.7, ease: "easeInOut", delay: 0.8 }}
-    >
-      <div className="absolute inset-0 preloader-aurora" />
-      <div className="absolute inset-0 preloader-noise" />
-      <motion.div
-        className="absolute inset-0 preloader-sweep"
-        initial={{ x: "-40%" }}
-        animate={{ x: "40%" }}
-        transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      <motion.div
-        className="relative z-10 flex flex-col items-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <div className="relative w-48 h-48 flex items-center justify-center">
-          <div className="absolute inset-0 preloader-halo" />
-          <motion.div
-            className="absolute inset-0 preloader-ring"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.div
-            className="absolute inset-[18%] rounded-full border border-indigo-500/30"
-            animate={{ rotate: -360 }}
-            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          />
-          <div className="absolute inset-0 preloader-orbit">
-            {sparks.map((_, index) => (
-              <span key={index} className="preloader-spark" style={{ "--i": index }} />
-            ))}
-          </div>
-          <motion.div
-            className="relative z-10 preloader-core"
-            initial={{ scale: 0.7, opacity: 0 }}
-            animate={{ scale: [0.95, 1.05, 0.95], opacity: 1 }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <img
-              src={eventmateLogo}
-              alt="Bajaj Chandrapur Polytechnic logo"
-              className="preloader-logo"
-              loading="eager"
-              decoding="async"
-            />
-          </motion.div>
-        </div>
-
-        <motion.p
-          className="mt-6 text-xs uppercase tracking-[0.45em] text-indigo-500 dark:text-indigo-300"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-        >
-          EventMate
-        </motion.p>
-
-        <div className="mt-4 h-1.5 w-52 overflow-hidden rounded-full bg-gray-200/70 dark:bg-white/10">
-          <motion.span
-            className="block h-full w-1/2 preloader-bar"
-            animate={{ x: ["-60%", "140%"] }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-          />
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
 export default function Landing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [isLoading, setIsLoading] = useState(true); // Preloader State
   const reduceMotion = useReducedMotion();
   const location = useLocation();
 
-  // --- Handle Preloader ---
-  useEffect(() => {
-    // Simulate loading data/assets
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2200); // Time before preloader vanishes
-
-    return () => clearTimeout(timer);
-  }, []);
-
   // --- Parallax & Scroll Logic ---
   const { scrollYProgress } = useScroll();
-  const y1 = useTransform(scrollYProgress, [0, 1], [0, 300]); 
-  const y2 = useTransform(scrollYProgress, [0, 1], [0, -200]);
-  const y3 = useTransform(scrollYProgress, [0, 1], [0, 150]);
-  const scaleX = useScroll().scrollYProgress;
+  const scaleX = scrollYProgress;
 
   const events = [
     {
@@ -225,24 +130,14 @@ export default function Landing() {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
-    if (isLoading) {
-      const timer = setTimeout(scrollToTarget, 250);
-      return () => clearTimeout(timer);
-    }
-
     requestAnimationFrame(scrollToTarget);
-  }, [location.hash, isLoading]);
+  }, [location.hash]);
 
   const viewportOnce = { once: true, amount: 0.25 };
 
   return (
     <div className="min-h-screen relative bg-white dark:bg-[#030712] text-gray-900 dark:text-white overflow-x-hidden selection:bg-indigo-500 selection:text-white font-sans transition-colors duration-300">
       
-      {/* --- PRELOADER ANIMATION --- */}
-      <AnimatePresence mode="wait">
-        {isLoading && <Preloader />}
-      </AnimatePresence>
-
       {/* --- SCROLL PROGRESS BAR --- */}
       <motion.div
         className="fixed top-0 left-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 z-50 origin-left"
@@ -256,10 +151,9 @@ export default function Landing() {
              style={{ backgroundImage: 'radial-gradient(#6366f1 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
         </div>
 
-        {/* Parallax Blobs */}
-        <motion.div style={{ y: y1 }} className="absolute top-[-10%] left-[-10%] w-[800px] h-[800px] bg-indigo-400/20 dark:bg-indigo-600/20 rounded-full blur-[120px]" />
-        <motion.div style={{ y: y2 }} className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] bg-purple-400/20 dark:bg-purple-600/20 rounded-full blur-[120px]" />
-        <motion.div style={{ y: y3 }} className="absolute top-[30%] right-[-10%] w-[500px] h-[500px] bg-pink-300/10 dark:bg-pink-600/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[800px] h-[800px] bg-indigo-400/15 dark:bg-indigo-600/15 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] bg-purple-400/15 dark:bg-purple-600/15 rounded-full blur-[120px]" />
+        <div className="absolute top-[30%] right-[-10%] w-[500px] h-[500px] bg-pink-300/10 dark:bg-pink-600/10 rounded-full blur-[100px]" />
       </div>
 
       {/* --- HERO SECTION (Synced Animation) --- */}
@@ -274,14 +168,12 @@ export default function Landing() {
 
         <div className="max-w-5xl mx-auto text-center">
           
-          {/* Only animate Hero content when Loading is False */}
-          {!isLoading && (
-            <motion.div
-              initial="hidden"
-              animate="show"
-              variants={containerReveal}
-              className="w-full"
-            >
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={containerReveal}
+            className="w-full"
+          >
               {/* Badge */}
               <motion.span
                 variants={textReveal}
@@ -296,11 +188,11 @@ export default function Landing() {
                 className="hero-title text-5xl md:text-7xl lg:text-8xl font-black tracking-tight mb-8 leading-[1.05] text-transparent bg-clip-text bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-white/40"
               >
                 Manage Campus Events <br />
-                <motion.span 
+                <motion.span
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 1.2, duration: 0.8, type: "spring" }}
-                  className="hero-accent inline-block bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-gradient"
+                  className="hero-accent inline-block bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"
                 >
                   Seamlessly
                 </motion.span>
@@ -315,7 +207,7 @@ export default function Landing() {
               <motion.div variants={textReveal} className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-5">
                 <Link
                   to="/signup"
-                  className="group relative p-[2px] rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-[spin_4s_linear_infinite] cta-glow"
+                  className="group relative p-[2px] rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 cta-glow"
                 >
                   <div className="relative bg-white dark:bg-[#030712] rounded-full px-8 py-4 group-hover:bg-opacity-0 transition-all duration-300">
                     <span className="relative z-10 text-gray-900 dark:text-white font-bold text-lg flex items-center">
@@ -331,8 +223,7 @@ export default function Landing() {
                   Login
                 </Link>
               </motion.div>
-            </motion.div>
-          )}
+          </motion.div>
         </div>
       </section>
 
@@ -340,7 +231,7 @@ export default function Landing() {
       <section className="relative z-10 py-8 overflow-hidden border-y border-gray-200 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
         <div className="flex whitespace-nowrap gap-12">
           {[...Array(2)].map((_, i) => (
-            <div key={i} className="flex gap-12 animate-[marquee_30s_linear_infinite] min-w-full justify-center">
+            <div key={i} className="flex flex-wrap gap-6 md:gap-12 min-w-full justify-center">
               <span className="text-2xl font-bold text-gray-300 dark:text-white/10 uppercase tracking-widest">Hackathon</span>
               <span className="text-2xl font-bold text-indigo-300 dark:text-indigo-500/20 uppercase tracking-widest">•</span>
               <span className="text-2xl font-bold text-gray-300 dark:text-white/10 uppercase tracking-widest">Quiz Competition</span>
@@ -617,161 +508,43 @@ export default function Landing() {
       </section>                                                                                                                     
 
       <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes marquee {
-          to { transform: translateX(-50%); }
-        }
-        @keyframes gradient {
-          0%, 100% { background-position: 0% center; }
-          50% { background-position: 100% center; }
-        }
-        .animate-gradient {
-          animation: gradient 5s ease infinite;
-          background-size: 200% auto;
-        }
-        @keyframes auroraShift {
-          0%, 100% { transform: translate3d(-4%, -2%, 0) scale(1); }
-          50% { transform: translate3d(4%, 2%, 0) scale(1.05); }
-        }
-        @keyframes orbit {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes spark {
-          0%, 100% { opacity: 0.4; transform: translateX(84px) scale(0.8); }
-          50% { opacity: 1; transform: translateX(92px) scale(1); }
-        }
-        @keyframes heroFloat {
-          0%, 100% { transform: translate3d(0, 0, 0); }
-          50% { transform: translate3d(0, -18px, 0); }
-        }
-        @keyframes starDrift {
-          to { background-position: 200px 200px, -120px 160px; }
-        }
-        @keyframes beamSweep {
-          0%, 100% { transform: translate3d(0, 0, 0) rotate(-2deg); opacity: 0.5; }
-          50% { transform: translate3d(0, 40px, 0) rotate(2deg); opacity: 0.8; }
-        }
-        .preloader-aurora {
-          background:
-            radial-gradient(circle at 20% 20%, rgba(99,102,241,0.35), transparent 55%),
-            radial-gradient(circle at 80% 30%, rgba(236,72,153,0.25), transparent 50%),
-            radial-gradient(circle at 50% 80%, rgba(168,85,247,0.25), transparent 55%);
-          filter: blur(20px);
-          animation: auroraShift 10s ease-in-out infinite;
-        }
-        .preloader-noise {
-          background-image: radial-gradient(rgba(255,255,255,0.25) 1px, transparent 1px);
-          background-size: 3px 3px;
-          opacity: 0.12;
-          mix-blend-mode: overlay;
-        }
-        .preloader-sweep {
-          background: linear-gradient(120deg, transparent 10%, rgba(99,102,241,0.25), rgba(236,72,153,0.2), transparent 80%);
-          opacity: 0.6;
-        }
-        .preloader-halo {
-          border-radius: 9999px;
-          background: radial-gradient(circle, rgba(99,102,241,0.35), transparent 65%);
-          filter: blur(18px);
-        }
-        .preloader-ring {
-          border-radius: 9999px;
-          border: 1px solid rgba(99,102,241,0.35);
-          box-shadow: 0 0 40px rgba(99,102,241,0.25);
-        }
-        .preloader-orbit {
-          position: absolute;
-          inset: 0;
-          animation: orbit 10s linear infinite;
-        }
-        .preloader-spark {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 8px;
-          height: 8px;
-          border-radius: 9999px;
-          background: radial-gradient(circle, rgba(99,102,241,0.9), rgba(236,72,153,0.8));
-          transform: rotate(calc(var(--i) * 30deg)) translateX(84px);
-          animation: spark 2.4s ease-in-out infinite;
-          animation-delay: calc(var(--i) * -0.2s);
-          box-shadow: 0 0 16px rgba(99,102,241,0.6);
-        }
-        .preloader-core {
-          position: relative;
-          width: 112px;
-          height: 112px;
-          border-radius: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.9), rgba(255,255,255,0.05));
-          box-shadow: 0 18px 45px rgba(99,102,241,0.3);
-          backdrop-filter: blur(6px);
-        }
-        .preloader-core::after {
-          content: "";
-          position: absolute;
-          inset: -8px;
-          border-radius: 36px;
-          border: 1px solid rgba(99,102,241,0.35);
-          box-shadow: 0 0 28px rgba(236,72,153,0.2);
-          opacity: 0.75;
-        }
-        .preloader-logo {
-          width: 92px;
-          height: 92px;
-          object-fit: contain;
-          filter: drop-shadow(0 10px 18px rgba(15, 23, 42, 0.35))
-            drop-shadow(0 0 20px rgba(99, 102, 241, 0.35));
-        }
-        .preloader-bar {
-          background: linear-gradient(90deg, rgba(99,102,241,0.9), rgba(236,72,153,0.9));
-        }
         .hero-spotlight {
           position: absolute;
           border-radius: 9999px;
           filter: blur(40px);
-          opacity: 0.65;
-          animation: heroFloat 14s ease-in-out infinite;
+          opacity: 0.5;
         }
         .hero-spotlight--one {
           width: 420px;
           height: 420px;
           top: -120px;
           left: 8%;
-          background: radial-gradient(circle, rgba(99,102,241,0.45), transparent 70%);
-          animation-delay: -4s;
+          background: radial-gradient(circle, rgba(99,102,241,0.35), transparent 70%);
         }
         .hero-spotlight--two {
           width: 520px;
           height: 520px;
           bottom: -200px;
           right: 5%;
-          background: radial-gradient(circle, rgba(236,72,153,0.35), transparent 70%);
-          animation-delay: -6s;
+          background: radial-gradient(circle, rgba(236,72,153,0.25), transparent 70%);
         }
         .hero-spotlight--three {
           width: 360px;
           height: 360px;
           top: 30%;
           right: 18%;
-          background: radial-gradient(circle, rgba(168,85,247,0.35), transparent 70%);
-          animation-delay: -2s;
+          background: radial-gradient(circle, rgba(168,85,247,0.25), transparent 70%);
         }
         .hero-stars {
           position: absolute;
           inset: 0;
-          opacity: 0.35;
+          opacity: 0.2;
           background-image:
-            radial-gradient(rgba(99,102,241,0.45) 1px, transparent 1px),
-            radial-gradient(rgba(236,72,153,0.35) 1px, transparent 1px);
+            radial-gradient(rgba(99,102,241,0.35) 1px, transparent 1px),
+            radial-gradient(rgba(236,72,153,0.25) 1px, transparent 1px);
           background-size: 140px 140px, 220px 220px;
           background-position: 0 0, 80px 100px;
           mix-blend-mode: screen;
-          animation: starDrift 30s linear infinite;
         }
         .hero-beam {
           position: absolute;
@@ -779,18 +552,17 @@ export default function Landing() {
           right: -10%;
           top: -30%;
           height: 280px;
-          background: linear-gradient(120deg, rgba(99,102,241,0.18), rgba(236,72,153,0.2), transparent 70%);
+          background: linear-gradient(120deg, rgba(99,102,241,0.12), rgba(236,72,153,0.12), transparent 70%);
           filter: blur(40px);
-          animation: beamSweep 18s ease-in-out infinite;
         }
         .hero-title {
           text-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
         }
         .hero-accent {
-          text-shadow: 0 0 30px rgba(99,102,241,0.45);
+          text-shadow: 0 0 20px rgba(99,102,241,0.35);
         }
         .cta-glow {
-          box-shadow: 0 20px 40px rgba(99,102,241,0.25);
+          box-shadow: 0 14px 28px rgba(99,102,241,0.2);
         }
         .cta-secondary {
           position: relative;

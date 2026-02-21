@@ -28,6 +28,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
 
     if (!data.email || !data.password) {
       setErrors({
@@ -69,7 +70,13 @@ export default function Login() {
       const currentRole = profileUser?.role || role || user?.role;
       navigate(dashboardRoutes[currentRole] || "/student-dashboard", { replace: true });
     } catch (error) {
-      setErrors({ submit: error.response?.data?.message || error.message || "Login failed. Please try again." });
+      const status = error.response?.status;
+      const retryAfter = Number(error.response?.data?.retryAfterSeconds);
+      const rateLimitMessage =
+        status === 429 && Number.isFinite(retryAfter)
+          ? `Too many attempts. Try again in ${retryAfter} seconds.`
+          : error.response?.data?.message;
+      setErrors({ submit: rateLimitMessage || error.message || "Login failed. Please try again." });
     } finally {
       setIsLoading(false);
     }

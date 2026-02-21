@@ -1,9 +1,9 @@
 ﻿import { BrowserRouter as Router, Routes, Route, Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import { getStoredToken, getStoredUser } from "./lib/auth";
+import { getStoredToken, getStoredUser, subscribeAuthUpdates } from "./lib/auth";
 import { logoutUser } from "./lib/logout";
 
 import Landing from "./pages/Landing";
@@ -39,6 +39,30 @@ const StudentDashboard = lazy(() =>
   }))
 );
 
+const StudentLayout = lazy(() =>
+  import("./pages/dashboards/StudentLayout").catch(() => ({
+    default: () => <div>Dashboard loading...</div>,
+  }))
+);
+
+const StudentEvents = lazy(() =>
+  import("./pages/dashboards/StudentEvents").catch(() => ({
+    default: () => <div>Events loading...</div>,
+  }))
+);
+
+const StudentMyEvents = lazy(() =>
+  import("./pages/dashboards/StudentMyEvents").catch(() => ({
+    default: () => <div>My events loading...</div>,
+  }))
+);
+
+const StudentContactUs = lazy(() =>
+  import("./pages/dashboards/StudentContactUs").catch(() => ({
+    default: () => <div>Contact loading...</div>,
+  }))
+);
+
 const MyCertificates = lazy(() =>
   import("./pages/MyCertificates").catch(() => ({
     default: () => <div>Loading certificates...</div>,
@@ -68,7 +92,7 @@ function ProtectedRoute({ children, requiredRole }) {
 
 function MainLayout() {
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-white dark:from-gray-900 dark:via-purple-900/20 dark:to-black transition-colors duration-500">
+    <div className="flex flex-col min-h-screen overflow-x-hidden bg-gradient-to-br from-purple-50 via-indigo-50 to-white dark:from-gray-900 dark:via-purple-900/20 dark:to-black transition-colors duration-500">
       <Navbar variant="public" />
       <main className="flex-1">
         <Outlet />
@@ -81,8 +105,15 @@ function MainLayout() {
 function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const user = getStoredUser();
+  const [user, setUser] = useState(() => getStoredUser());
   const hideTopNav = location.pathname.startsWith("/student-dashboard");
+
+  useEffect(() => {
+    const unsubscribe = subscribeAuthUpdates(() => {
+      setUser(getStoredUser());
+    });
+    return unsubscribe;
+  }, []);
 
   const handleLogout = async () => {
     await logoutUser();
@@ -90,7 +121,7 @@ function DashboardLayout() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col min-h-screen overflow-x-hidden bg-gray-50 dark:bg-gray-900">
       {!hideTopNav && (
         <Navbar
           activePage={null}
@@ -159,22 +190,52 @@ export default function App() {
             element={
               <ProtectedRoute requiredRole="STUDENT">
                 <Suspense fallback={<div className="p-8 text-center">Loading Dashboard...</div>}>
-                  <StudentDashboard />
+                  <StudentLayout />
                 </Suspense>
               </ProtectedRoute>
             }
-          />
-
-          <Route
-            path="/student-dashboard/my-certificates"
-            element={
-              <ProtectedRoute requiredRole="STUDENT">
+          >
+            <Route
+              index
+              element={
+                <Suspense fallback={<div className="p-8 text-center">Loading Dashboard...</div>}>
+                  <StudentDashboard />
+                </Suspense>
+              }
+            />
+            <Route
+              path="events"
+              element={
+                <Suspense fallback={<div className="p-8 text-center">Loading Events...</div>}>
+                  <StudentEvents />
+                </Suspense>
+              }
+            />
+            <Route
+              path="my-events"
+              element={
+                <Suspense fallback={<div className="p-8 text-center">Loading My Events...</div>}>
+                  <StudentMyEvents />
+                </Suspense>
+              }
+            />
+            <Route
+              path="contact-us"
+              element={
+                <Suspense fallback={<div className="p-8 text-center">Loading Contact...</div>}>
+                  <StudentContactUs />
+                </Suspense>
+              }
+            />
+            <Route
+              path="my-certificates"
+              element={
                 <Suspense fallback={<div className="p-8 text-center">Loading Certificates...</div>}>
                   <MyCertificates />
                 </Suspense>
-              </ProtectedRoute>
-            }
-          />
+              }
+            />
+          </Route>
 
           <Route
             path="/profile"

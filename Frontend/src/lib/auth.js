@@ -1,6 +1,12 @@
-﻿const USER_KEY = "user";
+const USER_KEY = "user";
 const ACCESS_TOKEN_KEY = "accessToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
+const AUTH_UPDATED_EVENT = "eventmate:auth-updated";
+
+const emitAuthUpdated = () => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(AUTH_UPDATED_EVENT));
+};
 
 const normalizeUser = (user) => {
   if (!user) return null;
@@ -22,6 +28,8 @@ export const storeAuth = ({ accessToken, refreshToken, token, user }) => {
   if (normalized) {
     localStorage.setItem(USER_KEY, JSON.stringify(normalized));
   }
+
+  emitAuthUpdated();
 };
 
 export const getStoredUser = () => {
@@ -39,4 +47,24 @@ export const clearAuth = () => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  emitAuthUpdated();
+};
+
+export const subscribeAuthUpdates = (listener) => {
+  if (typeof window === "undefined") return () => {};
+
+  const onAuthUpdated = () => listener();
+  const onStorage = (event) => {
+    if ([USER_KEY, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY].includes(event.key)) {
+      listener();
+    }
+  };
+
+  window.addEventListener(AUTH_UPDATED_EVENT, onAuthUpdated);
+  window.addEventListener("storage", onStorage);
+
+  return () => {
+    window.removeEventListener(AUTH_UPDATED_EVENT, onAuthUpdated);
+    window.removeEventListener("storage", onStorage);
+  };
 };

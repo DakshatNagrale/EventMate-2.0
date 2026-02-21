@@ -43,7 +43,16 @@ export const forgotPasswordController = asyncHandler(async (req, res) => {
 
 // ---------------- RESET PASSWORD ----------------
 export const resetPasswordController = asyncHandler(async (req, res) => {
-  const { email, otp,  } = req.body;
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ success: false, message: "Email, OTP, and new password are required" });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+  }
+
   const user = await User.findOne({ email }).select("+otp +otpExpiry");
   if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
@@ -52,7 +61,7 @@ export const resetPasswordController = asyncHandler(async (req, res) => {
 
   user.password = await bcrypt.hash(newPassword, 10);
   user.otp = null;
-  user.otpExpiry = null;newPassword
+  user.otpExpiry = null;
   await user.save();
 
   res.json({ success: true, message: "Password reset successful" });

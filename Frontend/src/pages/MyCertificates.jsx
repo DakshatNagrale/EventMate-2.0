@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Download, ArrowLeft, Eye } from "lucide-react"
+import { Link } from "react-router-dom"
 
 
 export default function MyCertificates() {
@@ -100,12 +101,12 @@ export default function MyCertificates() {
 
         {/* Header with Back Button */}
         <div className="flex items-center gap-4 mb-8">
-          <a
-            href="/student-dashboard"
+          <Link
+            to="/student-dashboard"
             className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
           >
             <ArrowLeft className="text-gray-600 dark:text-gray-400" size={24} />
-          </a>
+          </Link>
           <div>
             <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white">
               My Certificates
@@ -232,12 +233,12 @@ export default function MyCertificates() {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               Register for events and attend them to earn certificates!
             </p>
-            <a
-              href="/student-dashboard"
+            <Link
+              to="/student-dashboard"
               className="inline-block px-8 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition"
             >
               Browse Events
-            </a>
+            </Link>
           </div>
         )}
       </div>

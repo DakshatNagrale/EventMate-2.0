@@ -17,12 +17,8 @@ export default function ForgotPassword() {
   const [isLoading, setIsLoading] = useState(false);
 
   const getErrorMessage = (error, fallback) => {
-    const status = error.response?.status;
     const apiMessage = error.response?.data?.message;
     if (apiMessage) return apiMessage;
-    if (status === 401 || status === 403) {
-      return "Please log in to reset your password. This backend requires authentication.";
-    }
     if (error.request) return "Backend not reachable. Start the backend server and try again.";
     return fallback;
   };
