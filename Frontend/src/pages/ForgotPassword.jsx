@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import SummaryApi from "../common/SummaryApi";
@@ -102,7 +102,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <section className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 flex items-center justify-center px-6 py-16">
+    <section className="eventmate-page min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 flex items-center justify-center px-6 py-16">
       <div className="max-w-lg w-full bg-white/90 backdrop-blur rounded-3xl shadow-2xl border border-white/60 p-8">
         <div className="mb-6">
           <p className="text-xs uppercase tracking-[0.3em] text-indigo-500 font-semibold">Reset Password</p>
@@ -206,3 +206,4 @@ export default function ForgotPassword() {
     </section>
   );
 }
+

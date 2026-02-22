@@ -35,7 +35,7 @@ export default function StudentLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col transition-colors">
+    <div className="eventmate-page min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col transition-colors">
       <StudentNavbar activePage={activePage} user={user} onLogout={handleLogout} />
       <main className="flex-grow">
         <Outlet />
@@ -43,3 +43,4 @@ export default function StudentLayout() {
     </div>
   );
 }
+

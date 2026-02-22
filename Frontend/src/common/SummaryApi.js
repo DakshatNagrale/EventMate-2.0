@@ -59,6 +59,31 @@ const SummaryApi = {
     method: "post",
   },
 
+  get_my_events: {
+    url: "/api/events/mine",
+    method: "get",
+  },
+
+  get_public_events: {
+    url: "/api/events/public",
+    method: "get",
+  },
+
+  get_event_coordinators: {
+    url: "/api/events/coordinators",
+    method: "get",
+  },
+
+  send_contact_admin: {
+    url: "/api/user/contact-admin",
+    method: "post",
+  },
+
+  get_my_contact_messages: {
+    url: "/api/user/contact-admin",
+    method: "get",
+  },
+
   /* ================= ADMIN ================= */
   get_all_users: {
     url: "/api/admin/users",
@@ -73,6 +98,66 @@ const SummaryApi = {
   delete_user: {
     url: "/api/admin/users/:id",
     method: "delete",
+  },
+
+  get_organizers: {
+    url: "/api/admin/organizers",
+    method: "get",
+  },
+
+  create_organizer: {
+    url: "/api/admin/organizers",
+    method: "post",
+  },
+
+  update_organizer: {
+    url: "/api/admin/organizers/:id",
+    method: "put",
+  },
+
+  delete_organizer: {
+    url: "/api/admin/organizers/:id",
+    method: "delete",
+  },
+
+  get_coordinators: {
+    url: "/api/admin/coordinators",
+    method: "get",
+  },
+
+  create_coordinator: {
+    url: "/api/admin/coordinators",
+    method: "post",
+  },
+
+  update_coordinator: {
+    url: "/api/admin/coordinators/:id",
+    method: "put",
+  },
+
+  delete_coordinator: {
+    url: "/api/admin/coordinators/:id",
+    method: "delete",
+  },
+
+  get_admin_contact_messages: {
+    url: "/api/admin/contact-messages",
+    method: "get",
+  },
+
+  get_admin_unread_contact_count: {
+    url: "/api/admin/contact-messages/unread-count",
+    method: "get",
+  },
+
+  mark_admin_contact_message_read: {
+    url: "/api/admin/contact-messages/:id/read",
+    method: "patch",
+  },
+
+  mark_all_admin_contact_messages_read: {
+    url: "/api/admin/contact-messages/read-all",
+    method: "patch",
   },
 };
 

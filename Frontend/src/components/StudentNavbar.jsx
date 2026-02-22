@@ -23,6 +23,9 @@ const Navbar = ({ activePage, setActivePage, user, onLogout }) => {
   const avatarUrl = user?.avatar || "";
   const avatarText = displayName.charAt(0).toUpperCase();
   const isDark = theme === "dark";
+  const themeToggleClass =
+    "p-2 rounded-full border border-indigo-200/80 bg-white/80 text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50 transition " +
+    "dark:border-indigo-300/40 dark:bg-indigo-500/15 dark:text-indigo-100 dark:hover:bg-indigo-500/30 dark:hover:text-white";
 
   useEffect(() => {
     setAvatarLoadFailed(false);
@@ -152,7 +155,7 @@ const Navbar = ({ activePage, setActivePage, user, onLogout }) => {
               type="button"
               aria-label="Toggle theme"
               onClick={toggleTheme}
-              className="p-2 rounded-full text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300 transition"
+              className={themeToggleClass}
             >
               {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
@@ -256,7 +259,7 @@ const Navbar = ({ activePage, setActivePage, user, onLogout }) => {
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="block w-full text-left px-4 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2"
+                className="block w-full text-left px-4 py-2 text-base font-medium text-gray-700 dark:text-indigo-100 hover:bg-indigo-50 dark:hover:bg-indigo-500/25 flex items-center gap-2"
               >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} Toggle theme
               </button>

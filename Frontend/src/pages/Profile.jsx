@@ -1,34 +1,70 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, ShieldCheck, UploadCloud, UserCircle2 } from "lucide-react";
 import api from "../lib/api";
 import SummaryApi from "../common/SummaryApi";
 import { storeAuth } from "../lib/auth";
 
 const yearOptions = ["1st", "2nd", "3rd", "4th"];
 
+const ROLE_LABELS = {
+  MAIN_ADMIN: "Main Admin",
+  ORGANIZER: "Organizer",
+  STUDENT_COORDINATOR: "Student Coordinator",
+  STUDENT: "Student",
+};
+
+const COORDINATOR_STATUS_OPTIONS = [
+  { value: "ACTIVE", label: "Active" },
+  { value: "ON_HOLD", label: "On Hold" },
+  { value: "SUSPENDED", label: "Suspended" },
+];
+
+const emptyForm = {
+  fullName: "",
+  mobileNumber: "",
+  collegeName: "",
+  academicBranch: "",
+  academicYear: "",
+  professionalDepartment: "",
+  professionalOccupation: "",
+  coordinatorAssignedEventId: "",
+  coordinatorScope: "",
+  coordinatorStatus: "ACTIVE",
+};
+
+const userToForm = (user) => ({
+  fullName: user?.fullName || "",
+  mobileNumber: user?.mobileNumber || "",
+  collegeName: user?.collegeName || "",
+  academicBranch: user?.academicProfile?.branch || "",
+  academicYear: user?.academicProfile?.year || "",
+  professionalDepartment: user?.professionalProfile?.department || "",
+  professionalOccupation: user?.professionalProfile?.occupation || "",
+  coordinatorAssignedEventId: user?.coordinatorProfile?.assignedEventId || "",
+  coordinatorScope: user?.coordinatorProfile?.scope || "",
+  coordinatorStatus: user?.coordinatorProfile?.status || "ACTIVE",
+});
+
 export default function Profile() {
   const [profile, setProfile] = useState(null);
-  const [formData, setFormData] = useState({
-    fullName: "",
-    mobileNumber: "",
-    collegeName: "",
-    academicBranch: "",
-    academicYear: "",
-    professionalDepartment: "",
-    professionalOccupation: "",
-  });
+  const [formData, setFormData] = useState(emptyForm);
   const [avatarFile, setAvatarFile] = useState(null);
   const [loading, setLoading] = useState({ profile: true, save: false, avatar: false });
   const [message, setMessage] = useState(null);
 
-  const userToForm = (user) => ({
-    fullName: user?.fullName || "",
-    mobileNumber: user?.mobileNumber || "",
-    collegeName: user?.collegeName || "",
-    academicBranch: user?.academicProfile?.branch || "",
-    academicYear: user?.academicProfile?.year || "",
-    professionalDepartment: user?.professionalProfile?.department || "",
-    professionalOccupation: user?.professionalProfile?.occupation || "",
-  });
+  const role = profile?.role || "";
+  const isStudent = role === "STUDENT";
+  const isCoordinator = role === "STUDENT_COORDINATOR";
+  const isOrganizer = role === "ORGANIZER";
+  const isAdmin = role === "MAIN_ADMIN";
+  const canEditProfessional = isOrganizer || isAdmin || isCoordinator;
+
+  const roleBadgeClass = useMemo(() => {
+    if (isAdmin) return "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200";
+    if (isOrganizer) return "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-200";
+    if (isCoordinator) return "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200";
+    return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200";
+  }, [isAdmin, isCoordinator, isOrganizer]);
 
   const loadProfile = async () => {
     setLoading((prev) => ({ ...prev, profile: true }));
@@ -52,29 +88,43 @@ export default function Profile() {
     loadProfile();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
+  const handleSave = async (event) => {
+    event.preventDefault();
     setLoading((prev) => ({ ...prev, save: true }));
     setMessage(null);
     try {
       const payload = {
-        fullName: formData.fullName,
-        mobileNumber: formData.mobileNumber || undefined,
-        collegeName: formData.collegeName || undefined,
-        academicProfile: {
-          branch: formData.academicBranch || undefined,
-          year: formData.academicYear || undefined,
-        },
-        professionalProfile: {
-          department: formData.professionalDepartment || undefined,
-          occupation: formData.professionalOccupation || undefined,
-        },
+        fullName: formData.fullName.trim(),
+        mobileNumber: formData.mobileNumber.trim() || undefined,
+        collegeName: formData.collegeName.trim() || undefined,
       };
+
+      if (isStudent) {
+        payload.academicProfile = {
+          branch: formData.academicBranch.trim() || undefined,
+          year: formData.academicYear || undefined,
+        };
+      }
+
+      if (canEditProfessional) {
+        payload.professionalProfile = {
+          department: formData.professionalDepartment.trim() || undefined,
+          occupation: formData.professionalOccupation.trim() || undefined,
+        };
+      }
+
+      if (isCoordinator) {
+        payload.coordinatorProfile = {
+          assignedEventId: formData.coordinatorAssignedEventId.trim() || undefined,
+          scope: formData.coordinatorScope.trim() || undefined,
+          status: formData.coordinatorStatus || undefined,
+        };
+      }
 
       const response = await api({ ...SummaryApi.update_profile, data: payload });
       const updated = response.data?.user;
@@ -83,7 +133,8 @@ export default function Profile() {
         setFormData(userToForm(updated));
         storeAuth({ user: updated });
       }
-      setMessage({ type: "success", text: response.data?.message || "Profile updated." });
+
+      setMessage({ type: "success", text: response.data?.message || "Profile updated successfully." });
     } catch (error) {
       setMessage({
         type: "error",
@@ -99,24 +150,28 @@ export default function Profile() {
       setMessage({ type: "error", text: "Please select an image first." });
       return;
     }
+
     setLoading((prev) => ({ ...prev, avatar: true }));
     setMessage(null);
     try {
       const form = new FormData();
       form.append("avatar", avatarFile);
+
       const response = await api({
         ...SummaryApi.upload_avatar,
         data: form,
         headers: { "Content-Type": "multipart/form-data" },
       });
+
       const newAvatar = response.data?.avatar;
       if (newAvatar) {
         const nextProfile = { ...profile, avatar: newAvatar };
         setProfile(nextProfile);
         storeAuth({ user: nextProfile });
       }
+
       setAvatarFile(null);
-      setMessage({ type: "success", text: response.data?.message || "Avatar updated." });
+      setMessage({ type: "success", text: response.data?.message || "Avatar updated successfully." });
     } catch (error) {
       setMessage({
         type: "error",
@@ -128,166 +183,244 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-white/10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Profile Settings</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Update your profile details and avatar.</p>
-        </div>
-      </header>
+    <div className="eventmate-page min-h-screen bg-slate-100/80 dark:bg-gray-900 px-4 sm:px-6 py-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <section className="eventmate-panel rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-900/70 p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Profile Settings</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-300 mt-1">
+                Manage your account details, role-specific profile info, and avatar.
+              </p>
+            </div>
+            <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${roleBadgeClass}`}>
+              <ShieldCheck size={13} />
+              {ROLE_LABELS[role] || "User"}
+            </div>
+          </div>
+        </section>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
         {message && (
           <p
-            className={`mb-6 text-sm text-center rounded-lg py-2 ${
+            className={`text-sm rounded-lg py-2 px-3 ${
               message.type === "success"
-                ? "text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20"
-                : "text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20"
+                ? "text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-500/15"
+                : "text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-500/15"
             }`}
           >
             {message.text}
           </p>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-6 sm:gap-8">
-          <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 sm:p-6">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Avatar</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Upload a profile photo.</p>
+        <div className="grid lg:grid-cols-[1fr_2fr] gap-6">
+          <section className="eventmate-panel rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-900/70 p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Account</h2>
 
-            <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="h-20 w-20 rounded-full border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
+            <div className="mt-4 flex items-center gap-4">
+              <div className="h-20 w-20 rounded-full border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 overflow-hidden flex items-center justify-center">
                 {profile?.avatar ? (
                   <img src={profile.avatar} alt="Avatar" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-lg font-semibold text-gray-500 dark:text-gray-300">
-                    {profile?.fullName?.[0] || "U"}
-                  </span>
+                  <UserCircle2 className="h-10 w-10 text-slate-400" />
                 )}
               </div>
-              <div className="w-full">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                  className="w-full text-sm text-gray-600 dark:text-gray-300"
-                />
-                <button
-                  type="button"
-                  onClick={handleAvatarUpload}
-                  disabled={loading.avatar}
-                  className="mt-3 w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-900 dark:bg-indigo-600 text-white text-sm font-semibold hover:bg-gray-800 dark:hover:bg-indigo-700 disabled:opacity-70"
-                >
-                  {loading.avatar ? "Uploading..." : "Upload Avatar"}
-                </button>
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white">{profile?.fullName || "User"}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{profile?.email || "user@eventmate.com"}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{ROLE_LABELS[role] || "User"}</p>
               </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
+                className="w-full text-sm text-slate-600 dark:text-slate-300"
+              />
+              <button
+                type="button"
+                onClick={handleAvatarUpload}
+                disabled={loading.avatar}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-70"
+              >
+                {loading.avatar ? <Loader2 size={15} className="animate-spin" /> : <UploadCloud size={15} />}
+                {loading.avatar ? "Uploading..." : "Upload Avatar"}
+              </button>
             </div>
           </section>
 
-          <section className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 sm:p-6">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Personal Details</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Keep your information up to date.</p>
+          <section className="eventmate-panel rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-900/70 p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Profile Details</h2>
 
             {loading.profile ? (
-              <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">Loading profile...</p>
+              <p className="mt-6 text-sm text-slate-500 dark:text-slate-300 inline-flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin" />
+                Loading profile...
+              </p>
             ) : (
-              <form onSubmit={handleSave} className="mt-6 space-y-5">
+              <form className="mt-5 space-y-5" onSubmit={handleSave}>
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</span>
                     <input
                       name="fullName"
                       value={formData.fullName}
                       onChange={handleChange}
-                      className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
-                      autoComplete="name"
+                      className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
                       required
                     />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Mobile Number</label>
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Mobile Number</span>
                     <input
                       name="mobileNumber"
                       value={formData.mobileNumber}
                       onChange={handleChange}
-                      className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
-                      autoComplete="tel"
+                      className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                      placeholder="10-digit number"
                     />
-                  </div>
+                  </label>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">College Name</label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Email</span>
                     <input
-                      name="collegeName"
-                      value={formData.collegeName}
-                      onChange={handleChange}
-                      className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
-                      autoComplete="organization"
+                      value={profile?.email || ""}
+                      readOnly
+                      className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3 text-sm text-slate-600 dark:text-slate-300"
                     />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Academic Branch</label>
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Role</span>
                     <input
-                      name="academicBranch"
-                      value={formData.academicBranch}
-                      onChange={handleChange}
-                      className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                      value={ROLE_LABELS[role] || "User"}
+                      readOnly
+                      className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3 text-sm text-slate-600 dark:text-slate-300"
                     />
-                  </div>
+                  </label>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Academic Year</label>
-                    <select
-                      name="academicYear"
-                      value={formData.academicYear}
-                      onChange={handleChange}
-                      className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
-                    >
-                      <option value="">Select year</option>
-                      {yearOptions.map((year) => (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Department</label>
-                    <input
-                      name="professionalDepartment"
-                      value={formData.professionalDepartment}
-                      onChange={handleChange}
-                      className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
-                    />
-                  </div>
-                </div>
+                {isStudent && (
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <label className="block">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">College Name</span>
+                        <input
+                          name="collegeName"
+                          value={formData.collegeName}
+                          onChange={handleChange}
+                          className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Academic Branch</span>
+                        <input
+                          name="academicBranch"
+                          value={formData.academicBranch}
+                          onChange={handleChange}
+                          className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                        />
+                      </label>
+                    </div>
+                    <label className="block sm:max-w-xs">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Academic Year</span>
+                      <select
+                        name="academicYear"
+                        value={formData.academicYear}
+                        onChange={handleChange}
+                        className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                      >
+                        <option value="">Select year</option>
+                        {yearOptions.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                )}
 
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Occupation</label>
-                  <input
-                    name="professionalOccupation"
-                    value={formData.professionalOccupation}
-                    onChange={handleChange}
-                    className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
-                    autoComplete="organization-title"
-                  />
-                </div>
+                {canEditProfessional && (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <label className="block">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</span>
+                      <input
+                        name="professionalDepartment"
+                        value={formData.professionalDepartment}
+                        onChange={handleChange}
+                        className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Occupation</span>
+                      <input
+                        name="professionalOccupation"
+                        value={formData.professionalOccupation}
+                        onChange={handleChange}
+                        className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {isCoordinator && (
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <label className="block">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Assigned Event ID</span>
+                        <input
+                          name="coordinatorAssignedEventId"
+                          value={formData.coordinatorAssignedEventId}
+                          onChange={handleChange}
+                          className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Scope</span>
+                        <input
+                          name="coordinatorScope"
+                          value={formData.coordinatorScope}
+                          onChange={handleChange}
+                          className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                        />
+                      </label>
+                    </div>
+                    <label className="block sm:max-w-xs">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Coordinator Status</span>
+                      <select
+                        name="coordinatorStatus"
+                        value={formData.coordinatorStatus}
+                        onChange={handleChange}
+                        className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
+                      >
+                        {COORDINATOR_STATUS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                )}
 
                 <button
                   type="submit"
                   disabled={loading.save}
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition disabled:opacity-70"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-white font-semibold hover:bg-indigo-700 disabled:opacity-70"
                 >
+                  {loading.save ? <Loader2 size={16} className="animate-spin" /> : null}
                   {loading.save ? "Saving..." : "Save Changes"}
                 </button>
               </form>
             )}
           </section>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
+
+

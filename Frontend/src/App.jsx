@@ -21,15 +21,57 @@ const AdminDashboard = lazy(() =>
   }))
 );
 
+const AdminUserManagement = lazy(() =>
+  import("./pages/dashboards/AdminUserManagement").catch(() => ({
+    default: () => <div>User management loading...</div>,
+  }))
+);
+
+const AdminOrganizerManagement = lazy(() =>
+  import("./pages/dashboards/AdminOrganizerManagement").catch(() => ({
+    default: () => <div>Organizer management loading...</div>,
+  }))
+);
+
+const AdminCoordinatorManagement = lazy(() =>
+  import("./pages/dashboards/AdminCoordinatorManagement").catch(() => ({
+    default: () => <div>Coordinator management loading...</div>,
+  }))
+);
+
+const AdminNotifications = lazy(() =>
+  import("./pages/dashboards/AdminNotifications").catch(() => ({
+    default: () => <div>Notifications loading...</div>,
+  }))
+);
+
 const OrganizerDashboard = lazy(() =>
   import("./pages/dashboards/OrganizerDashboard").catch(() => ({
     default: () => <div>Dashboard loading...</div>,
   }))
 );
 
+const OrganizerCreateEvent = lazy(() =>
+  import("./pages/dashboards/OrganizerCreateEvent").catch(() => ({
+    default: () => <div>Create event loading...</div>,
+  }))
+);
+
+const OrganizerContactAdmin = lazy(() =>
+  import("./pages/dashboards/OrganizerContactAdmin").catch(() => ({
+    default: () => <div>Contact admin loading...</div>,
+  }))
+);
+
 const CoordinatorDashboard = lazy(() =>
   import("./pages/dashboards/CoordinatorDashboard").catch(() => ({
     default: () => <div>Dashboard loading...</div>,
+  }))
+);
+
+const CoordinatorContactAdmin = lazy(() =>
+  import("./pages/dashboards/CoordinatorContactAdmin").catch(() => ({
+    default: () => <div>Contact admin loading...</div>,
   }))
 );
 
@@ -164,6 +206,50 @@ export default function App() {
           />
 
           <Route
+            path="/admin-dashboard/user-management"
+            element={
+              <ProtectedRoute requiredRole="MAIN_ADMIN">
+                <Suspense fallback={<div className="p-8 text-center">Loading User Management...</div>}>
+                  <AdminUserManagement />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-dashboard/organizer-management"
+            element={
+              <ProtectedRoute requiredRole="MAIN_ADMIN">
+                <Suspense fallback={<div className="p-8 text-center">Loading Organizer Management...</div>}>
+                  <AdminOrganizerManagement />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-dashboard/coordinator-management"
+            element={
+              <ProtectedRoute requiredRole="MAIN_ADMIN">
+                <Suspense fallback={<div className="p-8 text-center">Loading Coordinator Management...</div>}>
+                  <AdminCoordinatorManagement />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-dashboard/notifications"
+            element={
+              <ProtectedRoute requiredRole="MAIN_ADMIN">
+                <Suspense fallback={<div className="p-8 text-center">Loading Notifications...</div>}>
+                  <AdminNotifications />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/organizer-dashboard"
             element={
               <ProtectedRoute requiredRole="ORGANIZER">
@@ -175,12 +261,63 @@ export default function App() {
           />
 
           <Route
+            path="/organizer-dashboard/create-event"
+            element={
+              <ProtectedRoute requiredRole="ORGANIZER">
+                <Suspense fallback={<div className="p-8 text-center">Loading Create Event...</div>}>
+                  <OrganizerCreateEvent />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/organizer-dashboard/contact-admin"
+            element={
+              <ProtectedRoute requiredRole="ORGANIZER">
+                <Suspense fallback={<div className="p-8 text-center">Loading Contact Admin...</div>}>
+                  <OrganizerContactAdmin />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/organizer-dashboard/profile"
+            element={
+              <ProtectedRoute requiredRole="ORGANIZER">
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/coordinator-dashboard"
             element={
               <ProtectedRoute requiredRole="STUDENT_COORDINATOR">
                 <Suspense fallback={<div className="p-8 text-center">Loading Dashboard...</div>}>
                   <CoordinatorDashboard />
                 </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/coordinator-dashboard/contact-admin"
+            element={
+              <ProtectedRoute requiredRole="STUDENT_COORDINATOR">
+                <Suspense fallback={<div className="p-8 text-center">Loading Contact Admin...</div>}>
+                  <CoordinatorContactAdmin />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/coordinator-dashboard/profile"
+            element={
+              <ProtectedRoute requiredRole="STUDENT_COORDINATOR">
+                <Profile />
               </ProtectedRoute>
             }
           />

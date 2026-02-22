@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Search, 
   Bell, 
@@ -6,15 +6,21 @@ import {
   X, 
   LogOut, 
   Calendar,
+  ChevronDown,
   Moon,
   Sun
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import api from '../lib/api';
+import SummaryApi from '../common/SummaryApi';
 
 const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isAdminUsersMenuOpen, setIsAdminUsersMenuOpen] = useState(false);
+  const [adminUnreadCount, setAdminUnreadCount] = useState(0);
+  const adminUsersMenuCloseTimeoutRef = useRef(null);
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -24,11 +30,15 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
   const isAuthenticated = !isPublic && Boolean(user?.role);
   const isAdmin = isAuthenticated && user?.role === "MAIN_ADMIN";
   const isOrganizer = isAuthenticated && user?.role === "ORGANIZER";
+  const isCoordinator = isAuthenticated && user?.role === "STUDENT_COORDINATOR";
   const isStudent = isAuthenticated && user?.role === "STUDENT";
   const isPrivileged = isAdmin || isOrganizer;
   const displayName = user?.fullName || user?.name || 'User';
   const avatarUrl = user?.avatar || "";
   const isDark = theme === "dark";
+  const themeToggleClass =
+    "p-2 rounded-full border border-indigo-200/80 bg-white/80 text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50 transition " +
+    "dark:border-indigo-300/40 dark:bg-indigo-500/15 dark:text-indigo-100 dark:hover:bg-indigo-500/30 dark:hover:text-white";
 
   const roleHomePath = {
     MAIN_ADMIN: "/admin-dashboard",
@@ -37,11 +47,93 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
     STUDENT: "/student-dashboard",
   };
 
+  const roleProfilePath = {
+    MAIN_ADMIN: "/profile",
+    ORGANIZER: "/organizer-dashboard/profile",
+    STUDENT_COORDINATOR: "/coordinator-dashboard/profile",
+    STUDENT: "/profile",
+  };
+  const currentProfilePath = roleProfilePath[user?.role] || "/profile";
+
   const studentRouteMap = {
     home: "/student-dashboard",
     events: "/student-dashboard/events",
     "my-events": "/student-dashboard/my-events",
     "contact-us": "/student-dashboard/contact-us",
+  };
+
+  useEffect(() => {
+    return () => {
+      if (adminUsersMenuCloseTimeoutRef.current) {
+        clearTimeout(adminUsersMenuCloseTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAdminUnreadCount(0);
+      return undefined;
+    }
+
+    let isMounted = true;
+    let timerId;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await api({ ...SummaryApi.get_admin_unread_contact_count });
+        if (isMounted) {
+          setAdminUnreadCount(response.data?.unreadCount || 0);
+        }
+      } catch {
+        if (isMounted) {
+          setAdminUnreadCount(0);
+        }
+      }
+    };
+
+    fetchUnreadCount();
+    timerId = setInterval(fetchUnreadCount, 30000);
+
+    const handleUnreadEvent = (event) => {
+      const nextCount = Number(event?.detail);
+      if (!Number.isNaN(nextCount)) {
+        setAdminUnreadCount(nextCount);
+      }
+    };
+    window.addEventListener("eventmate:admin-unread-count", handleUnreadEvent);
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearInterval(timerId);
+      window.removeEventListener("eventmate:admin-unread-count", handleUnreadEvent);
+    };
+  }, [isAdmin, location.pathname]);
+
+  const openAdminUsersMenu = () => {
+    if (adminUsersMenuCloseTimeoutRef.current) {
+      clearTimeout(adminUsersMenuCloseTimeoutRef.current);
+      adminUsersMenuCloseTimeoutRef.current = null;
+    }
+    setIsAdminUsersMenuOpen(true);
+  };
+
+  const closeAdminUsersMenu = () => {
+    if (adminUsersMenuCloseTimeoutRef.current) {
+      clearTimeout(adminUsersMenuCloseTimeoutRef.current);
+    }
+    adminUsersMenuCloseTimeoutRef.current = setTimeout(() => {
+      setIsAdminUsersMenuOpen(false);
+      adminUsersMenuCloseTimeoutRef.current = null;
+    }, 220);
+  };
+
+  const closeAdminUsersMenuImmediately = () => {
+    if (adminUsersMenuCloseTimeoutRef.current) {
+      clearTimeout(adminUsersMenuCloseTimeoutRef.current);
+      adminUsersMenuCloseTimeoutRef.current = null;
+    }
+    setIsAdminUsersMenuOpen(false);
   };
 
   const handleNavClick = (pageName) => {
@@ -59,6 +151,7 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
 
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
+    closeAdminUsersMenuImmediately();
     window.scrollTo(0, 0);
   };
 
@@ -94,7 +187,12 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
     ? "relative bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-white/10 sticky top-0 z-50"
     : isPrivileged
       ? "relative bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-white/10 sticky top-0 z-50"
-    : "relative bg-white/85 dark:bg-gray-900/80 backdrop-blur-xl border-b border-white/60 dark:border-white/10 sticky top-0 z-50 shadow-[0_12px_30px_-20px_rgba(79,70,229,0.6)]"
+    : "relative bg-white/85 dark:bg-gray-900/80 backdrop-blur-xl border-b border-white/60 dark:border-white/10 sticky top-0 z-50 shadow-[0_12px_30px_-20px_rgba(79,70,229,0.6)]";
+  const isAdminUsersRoute =
+    location.pathname.startsWith("/admin-dashboard/user-management") ||
+    location.pathname.startsWith("/admin-dashboard/organizer-management") ||
+    location.pathname.startsWith("/admin-dashboard/coordinator-management");
+  const isAdminNotificationsRoute = location.pathname.startsWith("/admin-dashboard/notifications");
 
   return (
     <nav className={navClass}>
@@ -153,6 +251,30 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                 >
                   Home
                 </button>
+                {isCoordinator && (
+                  <>
+                    <Link
+                      to="/coordinator-dashboard/contact-admin"
+                      className={`inline-flex items-center px-1 pt-1 text-sm font-medium transition-all duration-200 ${
+                        location.pathname.startsWith("/coordinator-dashboard/contact-admin")
+                          ? "text-purple-600 dark:text-indigo-300 border-b-2 border-purple-600 dark:border-indigo-300"
+                          : "text-gray-600 hover:text-purple-600 dark:text-gray-300 dark:hover:text-indigo-300 border-b-2 border-transparent hover:border-gray-300 dark:hover:border-white/20"
+                      }`}
+                    >
+                      Contact Admin
+                    </Link>
+                    <Link
+                      to="/coordinator-dashboard/profile"
+                      className={`inline-flex items-center px-1 pt-1 text-sm font-medium transition-all duration-200 ${
+                        location.pathname.startsWith("/coordinator-dashboard/profile")
+                          ? "text-purple-600 dark:text-indigo-300 border-b-2 border-purple-600 dark:border-indigo-300"
+                          : "text-gray-600 hover:text-purple-600 dark:text-gray-300 dark:hover:text-indigo-300 border-b-2 border-transparent hover:border-gray-300 dark:hover:border-white/20"
+                      }`}
+                    >
+                      Profile
+                    </Link>
+                  </>
+                )}
                 {isStudent && (
                   <>
                     <button
@@ -213,39 +335,159 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
 
           {isAdmin && (
             <div className="hidden md:flex flex-1 items-center justify-center gap-6">
-              {[
-                { label: "Home", to: "/admin-dashboard", key: "home" },
-                { label: "System Oversight", to: "/admin-dashboard#system", key: "system" },
-                { label: "User Management", to: "/admin-dashboard#users", key: "users" },
-                { label: "Certificates & Audit Logs", to: "/admin-dashboard#certificates", key: "certificates" },
-                { label: "Security & Reports", to: "/admin-dashboard#security", key: "security" },
-              ].map((item) => {
-                const isCurrent =
-                  (item.key === "home" && location.pathname === "/admin-dashboard" && !location.hash) ||
-                  (item.key === "system" && location.hash === "#system") ||
-                  (item.key === "users" && location.hash === "#users") ||
-                  (item.key === "certificates" && location.hash === "#certificates") ||
-                  (item.key === "security" && location.hash === "#security");
+              <Link
+                to="/admin-dashboard"
+                className={`group relative text-sm font-medium transition-all duration-300 ${
+                  location.pathname === "/admin-dashboard" && !location.hash
+                    ? "text-indigo-600"
+                    : "text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300"
+                }`}
+              >
+                <span className="relative z-10">Home</span>
+                <span
+                  className={`absolute -bottom-2 left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-purple-500 transition-all duration-300 ${
+                    location.pathname === "/admin-dashboard" && !location.hash
+                      ? "opacity-100 scale-100"
+                      : "opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100"
+                  }`}
+                />
+              </Link>
 
-                return (
-                  <Link
-                    key={item.key}
-                    to={item.to}
-                    className={`group relative text-sm font-medium transition-all duration-300 ${
-                      isCurrent
-                        ? "text-indigo-600"
-                        : "text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300"
+              <Link
+                to="/admin-dashboard#system"
+                className={`group relative text-sm font-medium transition-all duration-300 ${
+                  location.hash === "#system"
+                    ? "text-indigo-600"
+                    : "text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300"
+                }`}
+              >
+                <span className="relative z-10">System Oversight</span>
+                <span
+                  className={`absolute -bottom-2 left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-purple-500 transition-all duration-300 ${
+                    location.hash === "#system"
+                      ? "opacity-100 scale-100"
+                      : "opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100"
+                  }`}
+                />
+              </Link>
+
+              <div
+                className="group relative"
+                onMouseEnter={openAdminUsersMenu}
+                onMouseLeave={closeAdminUsersMenu}
+              >
+                <button
+                  type="button"
+                  onClick={() => (isAdminUsersMenuOpen ? closeAdminUsersMenuImmediately() : openAdminUsersMenu())}
+                  className={`inline-flex items-center gap-1 relative text-sm font-medium transition-all duration-300 ${
+                    isAdminUsersRoute
+                      ? "text-indigo-600"
+                      : "text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300"
+                  }`}
+                >
+                  <span className="relative z-10">User Management</span>
+                  <ChevronDown size={14} className={`transition-transform duration-200 ${isAdminUsersMenuOpen ? "rotate-180" : ""}`} />
+                  <span
+                    className={`absolute -bottom-2 left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-purple-500 transition-all duration-300 ${
+                      isAdminUsersRoute
+                        ? "opacity-100 scale-100"
+                        : "opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100"
                     }`}
-                  >
-                    <span className="relative z-10">{item.label}</span>
-                    <span
-                      className={`absolute -bottom-2 left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-purple-500 transition-all duration-300 ${
-                        isCurrent ? "opacity-100 scale-100" : "opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100"
+                  />
+                </button>
+
+                {isAdminUsersMenuOpen && (
+                  <div className="absolute left-1/2 top-[calc(100%+8px)] z-50 w-56 -translate-x-1/2 rounded-xl border border-slate-200 bg-white/95 p-1.5 shadow-xl dark:border-white/10 dark:bg-gray-900/95">
+                    <Link
+                      to="/admin-dashboard/user-management"
+                      onClick={closeAdminUsersMenuImmediately}
+                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                        location.pathname.startsWith("/admin-dashboard/user-management")
+                          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"
+                          : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5"
                       }`}
-                    />
-                  </Link>
-                );
-              })}
+                    >
+                      All Users
+                    </Link>
+                    <Link
+                      to="/admin-dashboard/organizer-management"
+                      onClick={closeAdminUsersMenuImmediately}
+                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                        location.pathname.startsWith("/admin-dashboard/organizer-management")
+                          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"
+                          : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5"
+                      }`}
+                    >
+                      Organizer Management
+                    </Link>
+                    <Link
+                      to="/admin-dashboard/coordinator-management"
+                      onClick={closeAdminUsersMenuImmediately}
+                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                        location.pathname.startsWith("/admin-dashboard/coordinator-management")
+                          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"
+                          : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5"
+                      }`}
+                    >
+                      Coordinator Management
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              <Link
+                to="/admin-dashboard#certificates"
+                className={`group relative text-sm font-medium transition-all duration-300 ${
+                  location.hash === "#certificates"
+                    ? "text-indigo-600"
+                    : "text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300"
+                }`}
+              >
+                <span className="relative z-10">Certificates & Audit Logs</span>
+                <span
+                  className={`absolute -bottom-2 left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-purple-500 transition-all duration-300 ${
+                    location.hash === "#certificates"
+                      ? "opacity-100 scale-100"
+                      : "opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100"
+                  }`}
+                />
+              </Link>
+
+              <Link
+                to="/admin-dashboard#security"
+                className={`group relative text-sm font-medium transition-all duration-300 ${
+                  location.hash === "#security"
+                    ? "text-indigo-600"
+                    : "text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300"
+                }`}
+              >
+                <span className="relative z-10">Security & Reports</span>
+                <span
+                  className={`absolute -bottom-2 left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-purple-500 transition-all duration-300 ${
+                    location.hash === "#security"
+                      ? "opacity-100 scale-100"
+                      : "opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100"
+                  }`}
+                />
+              </Link>
+
+              <Link
+                to="/admin-dashboard/notifications"
+                className={`group relative text-sm font-medium transition-all duration-300 ${
+                  isAdminNotificationsRoute
+                    ? "text-indigo-600"
+                    : "text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300"
+                }`}
+              >
+                <span className="relative z-10">Notifications</span>
+                <span
+                  className={`absolute -bottom-2 left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-purple-500 transition-all duration-300 ${
+                    isAdminNotificationsRoute
+                      ? "opacity-100 scale-100"
+                      : "opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100"
+                  }`}
+                />
+              </Link>
             </div>
           )}
           {isOrganizer && (
@@ -253,12 +495,14 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
               {[
                 { label: "Home", to: "/organizer-dashboard", key: "home" },
                 { label: "My Events", to: "/organizer-dashboard#my-events", key: "my-events" },
-                { label: "Contact Admin", to: "/organizer-dashboard#contact-admin", key: "contact-admin" },
+                { label: "Contact Admin", to: "/organizer-dashboard/contact-admin", key: "contact-admin" },
+                { label: "Profile", to: "/organizer-dashboard/profile", key: "profile" },
               ].map((item) => {
                 const isCurrent =
                   (item.key === "home" && location.pathname === "/organizer-dashboard" && !location.hash) ||
                   (item.key === "my-events" && location.hash === "#my-events") ||
-                  (item.key === "contact-admin" && location.hash === "#contact-admin");
+                  (item.key === "contact-admin" && location.pathname.startsWith("/organizer-dashboard/contact-admin")) ||
+                  (item.key === "profile" && location.pathname.startsWith("/organizer-dashboard/profile"));
 
                 return (
                   <Link
@@ -279,16 +523,26 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
           <div className="hidden sm:ml-6 sm:flex sm:items-center gap-4">
             {isAdmin ? (
               <>
-                <button className="relative p-2 rounded-full text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300 transition" aria-label="Notifications">
+                <Link
+                  to="/admin-dashboard/notifications"
+                  className="relative p-2 rounded-full text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300 transition"
+                  aria-label="Notifications"
+                >
                   <Bell className="h-5 w-5" />
-                  <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-indigo-500 animate-admin-ping" />
-                  <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-indigo-500" />
-                </button>
+                  {adminUnreadCount > 0 && (
+                    <>
+                      <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-indigo-500 animate-admin-ping" />
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white text-center">
+                        {adminUnreadCount > 99 ? "99+" : adminUnreadCount}
+                      </span>
+                    </>
+                  )}
+                </Link>
                 <button
                   type="button"
                   aria-label="Toggle theme"
                   onClick={toggleTheme}
-                  className="p-2 rounded-full text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300 transition"
+                  className={themeToggleClass}
                 >
                   {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </button>
@@ -304,10 +558,18 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                         .slice(0, 2)
                         .map((part) => part[0])
                         .join("")
-                        .toUpperCase()
+                      .toUpperCase()
                     )}
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => onLogout?.()}
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-400/30 dark:text-red-300 dark:hover:bg-red-500/15"
+                >
+                  <LogOut size={15} />
+                  Logout
+                </button>
               </>
             ) : isOrganizer ? (
               <>
@@ -318,7 +580,7 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                   type="button"
                   aria-label="Toggle theme"
                   onClick={toggleTheme}
-                  className="p-2 rounded-full text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300 transition"
+                  className={themeToggleClass}
                 >
                   {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </button>
@@ -335,6 +597,14 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                       .toUpperCase()
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => onLogout?.()}
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-400/30 dark:text-red-300 dark:hover:bg-red-500/15"
+                >
+                  <LogOut size={15} />
+                  Logout
+                </button>
               </>
             ) : isAuthenticated ? (
               <>
@@ -360,7 +630,7 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                   type="button"
                   aria-label="Toggle theme"
                   onClick={toggleTheme}
-                  className="p-2 rounded-full text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300 transition"
+                  className={themeToggleClass}
                 >
                   {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </button>
@@ -392,7 +662,7 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email || 'student@college.com'}</p>
                       </div>
                       
-                      <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5">Your Profile</Link>
+                      <Link to={currentProfilePath} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5">Your Profile</Link>
                       <Link to="/settings" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5">Settings</Link>
                       <button
                         onClick={() => { onLogout?.(); setIsUserMenuOpen(false); }}
@@ -423,7 +693,7 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                   type="button"
                   aria-label="Toggle theme"
                   onClick={toggleTheme}
-                  className="p-2 rounded-full text-gray-900 hover:text-indigo-600 transition hover:scale-105"
+                  className={themeToggleClass}
                 >
                   {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </button>
@@ -455,8 +725,17 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                 <Link to="/admin-dashboard#system" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
                   System Oversight
                 </Link>
-                <Link to="/admin-dashboard#users" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
+                <Link to="/admin-dashboard/user-management" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
                   User Management
+                </Link>
+                <Link to="/admin-dashboard/organizer-management" className="w-full block pl-7 pr-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-300 hover:bg-gray-50 dark:hover:bg-white/5">
+                  Organizer Management
+                </Link>
+                <Link to="/admin-dashboard/coordinator-management" className="w-full block pl-7 pr-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-300 hover:bg-gray-50 dark:hover:bg-white/5">
+                  Coordinator Management
+                </Link>
+                <Link to="/admin-dashboard/notifications" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
+                  Notifications
                 </Link>
                 <Link to="/admin-dashboard#certificates" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
                   Certificates & Audit Logs
@@ -473,13 +752,26 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                 <Link to="/organizer-dashboard#my-events" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
                   My Events
                 </Link>
-                <Link to="/organizer-dashboard#contact-admin" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
+                <Link to="/organizer-dashboard/contact-admin" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
                   Contact Admin
+                </Link>
+                <Link to="/organizer-dashboard/profile" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
+                  Profile
                 </Link>
               </>
             ) : (
               <>
                 <button onClick={() => handleNavClick('home')} className="w-full text-left block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">Home</button>
+                {isCoordinator && (
+                  <>
+                    <Link to="/coordinator-dashboard/contact-admin" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
+                      Contact Admin
+                    </Link>
+                    <Link to="/coordinator-dashboard/profile" className="w-full block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
+                      Profile
+                    </Link>
+                  </>
+                )}
                 {isStudent && (
                   <>
                     <button onClick={() => handleNavClick('events')} className="w-full text-left block pl-3 pr-4 py-3 border-l-4 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5">
@@ -516,7 +808,7 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                   <button
                     type="button"
                     onClick={toggleTheme}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-base font-medium text-gray-700 dark:text-indigo-100 hover:bg-indigo-50 dark:hover:bg-indigo-500/25"
                   >
                     {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                     Toggle theme
@@ -537,7 +829,7 @@ const Navbar = ({ activePage, setActivePage, user, onLogout, variant = "auto" })
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 dark:text-indigo-100 hover:bg-indigo-50 dark:hover:bg-indigo-500/25"
                 >
                   {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                   Toggle theme

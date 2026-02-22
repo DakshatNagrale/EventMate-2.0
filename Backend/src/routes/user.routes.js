@@ -1,7 +1,15 @@
 import express from "express";
 import multer from "multer";
 import authMiddleware from "../middleware/auth.middleware.js";
-import { getProfileController, updateProfileController, uploadAvatarController, forgotPasswordController, resetPasswordController } from "../controllers/user.controller.js";
+import {
+  contactAdminController,
+  forgotPasswordController,
+  getMyContactMessagesController,
+  getProfileController,
+  resetPasswordController,
+  updateProfileController,
+  uploadAvatarController,
+} from "../controllers/user.controller.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -15,5 +23,7 @@ router.use(authMiddleware);
 router.get("/profile", getProfileController);
 router.put("/profile", updateProfileController);
 router.post("/avatar", upload.single("avatar"), uploadAvatarController);
+router.post("/contact-admin", contactAdminController);
+router.get("/contact-admin", getMyContactMessagesController);
 
 export default router;

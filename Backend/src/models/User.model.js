@@ -19,6 +19,15 @@ const UserSchema = new mongoose.Schema(
 
     academicProfile: { branch: String, year: { type: String, enum: ["1st","2nd","3rd","4th"] } },
     professionalProfile: { department: String, occupation: String },
+    coordinatorProfile: {
+      assignedEventId: { type: String, trim: true, maxlength: 80 },
+      scope: { type: String, trim: true, maxlength: 80 },
+      status: {
+        type: String,
+        enum: ["ACTIVE", "ON_HOLD", "SUSPENDED"],
+        default: "ACTIVE",
+      },
+    },
 
     emailVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },

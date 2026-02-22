@@ -21,6 +21,18 @@ const EventSchema = new mongoose.Schema(
       contactPhone: String
     },
 
+    studentCoordinators: [
+      {
+        coordinatorId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null
+        },
+        name: String,
+        email: String
+      }
+    ],
+
     venue: {
       mode: {
         type: String,
@@ -69,6 +81,13 @@ const EventSchema = new mongoose.Schema(
     feedback: {
       enabled: Boolean,
       averageRating: Number
+    },
+
+    notifications: {
+      sendToStudents: {
+        type: Boolean,
+        default: false
+      }
     },
 
     status: {

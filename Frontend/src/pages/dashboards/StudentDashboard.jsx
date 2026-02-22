@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../lib/api";
+import SummaryApi from "../../common/SummaryApi";
 
 const StatCard = ({ label, value, color = "bg-purple-100 text-purple-700" }) => (
-  <div className={`flex flex-col items-center p-6 rounded-2xl ${color} dark:bg-gray-800 dark:border dark:border-gray-700 shadow-sm`}>
+  <div className={`eventmate-kpi flex flex-col items-center p-6 rounded-2xl ${color} dark:bg-gray-800 dark:border dark:border-gray-700 shadow-sm`}>
     <div className="text-sm text-gray-600 dark:text-gray-300">{label}</div>
     <div className="text-2xl font-bold mt-1">{value}</div>
   </div>
 );
 
 const EventCard = ({ title, date, time, dept, type, price, imageUrl, isFree = false }) => (
-  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col h-full border border-gray-100 dark:border-gray-700 group">
+  <div className="eventmate-panel bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col h-full border border-gray-100 dark:border-gray-700 group">
     <div className="relative h-48 overflow-hidden">
       <img src={imageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
       <div className="absolute top-3 right-3 px-3 py-1 rounded-full text-sm font-medium bg-white/90 dark:bg-gray-900/80 dark:text-gray-100 shadow-sm backdrop-blur-sm z-10">
@@ -39,106 +41,103 @@ const EventCard = ({ title, date, time, dept, type, price, imageUrl, isFree = fa
   </div>
 );
 
-const eventImages = {
-  hackathon: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format",
-  quiz: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format",
-  cultural: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format",
-  workshop: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format",
-  ai: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800&auto=format",
-  sports: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format",
+const fallbackImages = {
+  Technical: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format",
+  Cultural: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format",
+  Sports: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format",
+  Workshop: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format",
 };
 
-const allEvents = [
-  {
-    title: "Hackathon 2025",
-    date: "Today",
-    time: "8:00 AM",
-    dept: "Computer Department",
-    type: "Technical",
-    price: "800",
-    imageUrl: eventImages.hackathon,
-    status: "current",
-  },
-  {
-    title: "Quiz Competition",
-    date: "Dec 11, 2025",
-    time: "12:00 PM",
-    dept: "Various Departments",
-    type: "Technical",
-    price: "0",
-    imageUrl: eventImages.quiz,
-    status: "upcoming",
-    isFree: true,
-  },
-  {
-    title: "Cultural Fest",
-    date: "Feb 20, 2026",
-    time: "9:00 AM",
-    dept: "Cultural Committee",
-    type: "Cultural",
-    price: "200",
-    imageUrl: eventImages.cultural,
-    status: "upcoming",
-  },
-  {
-    title: "Web Dev Workshop",
-    date: "Nov 25, 2025",
-    time: "10:00 AM",
-    dept: "Training Department",
-    type: "Workshop",
-    price: "500",
-    imageUrl: eventImages.workshop,
-    status: "upcoming",
-  },
-  {
-    title: "Future of AI Seminar",
-    date: "Dec 05, 2025",
-    time: "2:00 PM",
-    dept: "Science Club",
-    type: "Technical",
-    price: "0",
-    imageUrl: eventImages.ai,
-    status: "upcoming",
-    isFree: true,
-  },
-  {
-    title: "Annual Sports Meet",
-    date: "Jan 15, 2026",
-    time: "8:00 AM",
-    dept: "Sports Authority",
-    type: "Sports",
-    price: "100",
-    imageUrl: eventImages.sports,
-    status: "upcoming",
-  },
-];
+const formatDate = (value) => {
+  if (!value) return "Date TBD";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date TBD";
+  return date.toLocaleDateString([], { year: "numeric", month: "short", day: "2-digit" });
+};
+
+const mapEventToCard = (event) => {
+  const fee = Number(event?.registration?.fee || 0);
+  const category = event?.category || "Workshop";
+  return {
+    id: event?._id,
+    title: event?.title || "Untitled Event",
+    date: formatDate(event?.schedule?.startDate),
+    time: event?.schedule?.startTime || "Time TBD",
+    dept: event?.organizer?.department || event?.organizer?.name || "Campus Event",
+    type: category,
+    price: fee,
+    isFree: fee <= 0,
+    imageUrl: event?.posterUrl || fallbackImages[category] || fallbackImages.Workshop,
+  };
+};
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [showAllRecommended, setShowAllRecommended] = useState(false);
-  const displayedEvents = showAllRecommended ? allEvents : allEvents.slice(0, 3);
+  const [events, setEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [eventsError, setEventsError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchEvents = async () => {
+      setLoadingEvents(true);
+      setEventsError(null);
+      try {
+        const response = await api({
+          ...SummaryApi.get_public_events,
+          skipAuth: true,
+        });
+        if (isMounted) {
+          setEvents(response.data?.events || []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setEventsError(err.response?.data?.message || "Unable to load recommendations.");
+          setEvents([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingEvents(false);
+        }
+      }
+    };
+
+    fetchEvents();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const recommendedEvents = useMemo(() => events.map(mapEventToCard), [events]);
+  const displayedEvents = useMemo(
+    () => (showAllRecommended ? recommendedEvents : recommendedEvents.slice(0, 3)),
+    [recommendedEvents, showAllRecommended]
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-gray-900 dark:text-gray-100">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-        <StatCard label="Browse Events" value="New activities" color="bg-blue-50 text-blue-700" />
-        <StatCard label="My Events" value="3 registered" />
-        <StatCard label="My Certificates" value="1 issued" />
-        <StatCard label="Feedback" value="2 pending" color="bg-orange-50 text-orange-700" />
+        <StatCard label="Browse Events" value="Live updates" color="bg-blue-50 text-blue-700" />
+        <StatCard label="My Events" value="Track joined" />
+        <StatCard label="My Certificates" value="View issued" />
+        <StatCard label="Feedback" value="Share experience" color="bg-orange-50 text-orange-700" />
       </div>
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          <section>
+          <section className="eventmate-panel rounded-2xl border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-gray-900/60 p-5 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recommended For You</h2>
-                <p className="text-gray-600 dark:text-gray-300 mt-1">Based on your interests</p>
+                <p className="text-gray-600 dark:text-gray-300 mt-1">Based on published organizer events</p>
               </div>
               <div className="mt-3 sm:mt-0 flex gap-2">
                 <button
                   onClick={() => setShowAllRecommended((prev) => !prev)}
-                  className="px-5 py-2 bg-purple-100 dark:bg-indigo-500/20 text-purple-700 dark:text-indigo-200 rounded-lg hover:bg-purple-200 dark:hover:bg-indigo-500/30 transition font-medium"
+                  disabled={recommendedEvents.length <= 3}
+                  className="px-5 py-2 bg-purple-100 dark:bg-indigo-500/20 text-purple-700 dark:text-indigo-200 rounded-lg hover:bg-purple-200 dark:hover:bg-indigo-500/30 transition font-medium disabled:opacity-60"
                 >
                   {showAllRecommended ? "Show Less" : "Show More"}
                 </button>
@@ -151,21 +150,41 @@ export default function StudentDashboard() {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {displayedEvents.map((event, index) => (
-                <EventCard key={`${event.title}-${index}`} {...event} />
-              ))}
-            </div>
+            {loadingEvents && (
+              <div className="eventmate-kpi rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-10 text-center text-gray-500 dark:text-gray-300">
+                Loading events...
+              </div>
+            )}
+
+            {!loadingEvents && eventsError && (
+              <div className="eventmate-kpi rounded-xl border border-red-200 bg-red-50 dark:border-red-400/40 dark:bg-red-500/15 p-6 text-red-700 dark:text-red-200">
+                {eventsError}
+              </div>
+            )}
+
+            {!loadingEvents && !eventsError && displayedEvents.length > 0 && (
+              <div className="grid md:grid-cols-2 gap-6">
+                {displayedEvents.map((event) => (
+                  <EventCard key={event.id} {...event} />
+                ))}
+              </div>
+            )}
+
+            {!loadingEvents && !eventsError && displayedEvents.length === 0 && (
+              <div className="eventmate-kpi rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-10 text-center text-gray-500 dark:text-gray-300">
+                No published events available right now.
+              </div>
+            )}
           </section>
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+          <div className="eventmate-panel bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
             <h2 className="text-xl font-bold mb-5 text-gray-900 dark:text-white">Recent Activity</h2>
             <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-              <p>Registered for AI Workshop</p>
-              <p>Certificate earned for Web Development Workshop</p>
-              <p>Viewed Music Concert details</p>
+              <p>Check newly published events from organizers.</p>
+              <p>Join events that match your interests.</p>
+              <p>Track participation and certificates from My Events.</p>
             </div>
           </div>
 

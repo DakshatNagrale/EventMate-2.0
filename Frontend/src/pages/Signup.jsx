@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import api from "../lib/api";
@@ -96,7 +96,7 @@ export default function Signup() {
   const parallaxY = (mousePosition.y - window.innerHeight / 2) / 50;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+    <main className="eventmate-page min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
           className="absolute w-[600px] h-[600px] top-[-200px] left-[-200px] rounded-full opacity-50 blur-3xl animate-blob-slow"
@@ -333,3 +333,4 @@ export default function Signup() {
     </main>
   );
 }
+

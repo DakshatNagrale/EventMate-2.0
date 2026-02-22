@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaRegEyeSlash, FaRegEye } from "react-icons/fa6";
 import api from "../lib/api";
@@ -85,7 +85,7 @@ export default function Login() {
   const isValid = Object.values(data).every((el) => el);
 
   return (
-    <section className="login-font relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50 text-slate-900">
+    <section className="eventmate-page login-font relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50 text-slate-900">
       <div className="pointer-events-none absolute inset-0 opacity-70">
         <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at top, rgba(99,102,241,0.18), transparent 55%), radial-gradient(circle at 20% 20%, rgba(168,85,247,0.2), transparent 40%), radial-gradient(circle at 80% 10%, rgba(236,72,153,0.16), transparent 45%)" }} />
         <div className="absolute inset-0 bg-[radial-gradient(#0f172a_0.5px,transparent_0.5px)] opacity-[0.08] [background-size:22px_22px]" />
@@ -250,3 +250,4 @@ export default function Login() {
     </section>
   );
 }
+

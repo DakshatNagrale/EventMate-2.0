@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import ContactUs from "../components/ContactUs";
 import { motion, useReducedMotion, useScroll } from "framer-motion";
+import api from "../lib/api";
+import SummaryApi from "../common/SummaryApi";
 
 // --- Icons ---
 const SearchIcon = () => (
@@ -18,6 +20,38 @@ const ArrowRight = () => (
 );
 
 const normalizeText = (value) => (value ?? "").toString().trim().toLowerCase();
+
+const fallbackImages = {
+  Technical: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format",
+  Cultural: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format",
+  Sports: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format",
+  Workshop: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format",
+};
+
+const formatEventDate = (value) => {
+  if (!value) return "Date TBD";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Date TBD";
+  return parsed.toLocaleDateString([], { year: "numeric", month: "short", day: "2-digit" });
+};
+
+const mapDbEvent = (event) => {
+  const fee = Number(event?.registration?.fee || 0);
+  const category = event?.category || "Workshop";
+
+  return {
+    id: event?._id,
+    title: event?.title || "Untitled Event",
+    description: event?.description || "Details will be announced soon.",
+    date: formatEventDate(event?.schedule?.startDate),
+    time: event?.schedule?.startTime || "Time TBD",
+    location: event?.venue?.location || "Venue TBD",
+    price: fee <= 0 ? "Free" : `Rs ${fee}`,
+    category,
+    image: event?.posterUrl || fallbackImages[category] || fallbackImages.Workshop,
+    link: "#",
+  };
+};
 
 // --- Animations ---
 // 1. Staggered Text Reveal for Hero
@@ -44,51 +78,47 @@ const stagger = {
 export default function Landing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [events, setEvents] = useState([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [eventsError, setEventsError] = useState(null);
   const reduceMotion = useReducedMotion();
   const location = useLocation();
 
   // --- Parallax & Scroll Logic ---
   const { scrollYProgress } = useScroll();
   const scaleX = scrollYProgress;
+  useEffect(() => {
+    let isMounted = true;
 
-  const events = [
-    {
-      id: 1,
-      title: "Hackathon 2025",
-      description: "Team up, hack smart, and solve real-world problems in our 24-hour innovation marathon.",
-      date: "Nov 12, 2025",
-      time: "9:00 AM",
-      location: "PHP Lab, Computer Department",
-      price: "₹300",
-      category: "Technical",
-      image:
-        "https://media.istockphoto.com/id/1189873851/vector/hackathlon-vector-illustration-tiny-programmers-competition-person-concept.jpg?s=612x612&w=0&k=20&c=9aoMxVsaQSuiUAJB_rU1IsTd5Cxu8DZteerQeuYbabI=",
-      link: "/hackathon",
-    },
-    {
-      id: 2,
-      title: "Quiz Competition",
-      description: "Test your technical skills, battle best, and claim your victory in ultimate Tech Quiz Competition.",
-      date: "Dec 11, 2025",
-      time: "12:00 PM",
-      location: "Audio Video Hall",
-      price: "Free",
-      category: "Technical",
-      image: "https://www.shutterstock.com/image-vector/trophy-hand-light-bulb-creativity-260nw-2593630875.jpg",
-    },
-    {
-      id: 3,
-      title: "Cultural Fest",
-      description: "Celebrate creativity and showcase your cultural spirit.",
-      date: "Feb 21, 2025",
-      time: "11:00 AM",
-      location: "Multi-Purpose Hall",
-      price: "₹200",
-      category: "Cultural",
-      image: "https://thumbs.dreamstime.com/b/crowd-enjoying-live-music-outdoor-festival-vibrant-stage-lighting-crowd-enjoying-live-music-outdoor-festival-345115016.jpg",
-    },
-  ];
+    const fetchEvents = async () => {
+      setIsLoadingEvents(true);
+      setEventsError(null);
+      try {
+        const response = await api({
+          ...SummaryApi.get_public_events,
+          skipAuth: true,
+        });
+        if (isMounted) {
+          const mapped = (response.data?.events || []).map(mapDbEvent);
+          setEvents(mapped);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setEvents([]);
+          setEventsError(err.response?.data?.message || "Unable to load events right now.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingEvents(false);
+        }
+      }
+    };
 
+    fetchEvents();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const categories = useMemo(() => {
     const seen = new Map();
     events.forEach((event) => {
@@ -403,7 +433,15 @@ export default function Landing() {
           variants={stagger}
           className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
         >
-          {filteredEvents.length === 0 ? (
+          {isLoadingEvents ? (
+            <div className="col-span-3 flex flex-col items-center justify-center py-24 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-300 dark:border-white/10">
+              <p className="text-xl text-gray-500 dark:text-gray-400">Loading events...</p>
+            </div>
+          ) : eventsError ? (
+            <div className="col-span-3 flex flex-col items-center justify-center py-24 bg-red-50 dark:bg-red-500/15 rounded-3xl border border-red-200 dark:border-red-400/30">
+              <p className="text-xl text-red-600 dark:text-red-300">{eventsError}</p>
+            </div>
+          ) : filteredEvents.length === 0 ? (
             <div className="col-span-3 flex flex-col items-center justify-center py-24 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-300 dark:border-white/10">
               <p className="text-xl text-gray-500 dark:text-gray-400">No events found matching your search.</p>
             </div>
@@ -423,10 +461,11 @@ export default function Landing() {
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                  
-                  <div className={`absolute top-6 right-6 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-lg backdrop-blur-md ${
-                    event.price === "Free" ? "bg-emerald-600" : "bg-indigo-600"
-                  }`}>
+                  <div
+                    className={`absolute top-6 right-6 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-lg backdrop-blur-md ${
+                      event.price === "Free" ? "bg-emerald-600" : "bg-indigo-600"
+                    }`}
+                  >
                     {event.price}
                   </div>
                 </div>
@@ -444,7 +483,7 @@ export default function Landing() {
                   </p>
 
                   <div className="space-y-3 mb-8 text-sm text-gray-500 dark:text-gray-400">
-                    <div className="flex items-center"><CalendarIcon /> {event.date} • {event.time}</div>
+                    <div className="flex items-center"><CalendarIcon /> {event.date} | {event.time}</div>
                     <div className="flex items-center"><MapPinIcon /> {event.location}</div>
                   </div>
 

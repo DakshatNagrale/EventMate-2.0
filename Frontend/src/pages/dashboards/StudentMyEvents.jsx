@@ -6,7 +6,7 @@ const MyEventCard = ({ event, onViewCertificate }) => {
   const isUpcoming = event.status === "upcoming";
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300 flex flex-col h-full">
+    <div className="eventmate-panel bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300 flex flex-col h-full">
       <div className="h-40 overflow-hidden relative">
         <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
         <div
@@ -139,7 +139,7 @@ export default function StudentMyEvents() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
+        <div className="eventmate-kpi text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
           <Calendar className="mx-auto text-gray-300 mb-4" size={48} />
           <h3 className="text-lg font-medium text-gray-900">No events found</h3>
           <p className="text-gray-500">You do not have any {activeTab} events yet.</p>
