@@ -1,0 +1,40 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: eventmate-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: eventmate-backend
+    restart: unless-stopped
+    env_file:
+      - ./Backend/.env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/eventmate
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /
+    container_name: eventmate-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

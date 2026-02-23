@@ -1,115 +1,146 @@
 ﻿import { BrowserRouter as Router, Routes, Route, Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
-import { getStoredToken, getStoredUser, subscribeAuthUpdates } from "./lib/auth";
-import { logoutUser } from "./lib/logout";
+import Navbar from "./shared/components/Navbar";
+import Footer from "./shared/components/Footer";
+import { getStoredToken, getStoredUser, subscribeAuthUpdates } from "./shared/lib/auth";
+import { logoutUser } from "./shared/lib/logout";
 
-import Landing from "./pages/Landing";
-import Hackathon from "./components/Hackathon";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import VerifyEmail from "./pages/VerifyEmail";
-import ForgotPassword from "./pages/ForgotPassword";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
+import Landing from "./features/public/pages/Landing";
+import Hackathon from "./features/public/pages/Hackathon";
+import Login from "./features/auth/pages/Login";
+import Signup from "./features/auth/pages/Signup";
+import VerifyEmail from "./features/auth/pages/VerifyEmail";
+import ForgotPassword from "./features/auth/pages/ForgotPassword";
+import Profile from "./features/account/pages/Profile";
+import Settings from "./features/account/pages/Settings";
+import NotFound from "./app/pages/NotFound";
 
 const AdminDashboard = lazy(() =>
-  import("./pages/dashboards/AdminDashboard").catch(() => ({
+  import("./features/admin/pages/AdminDashboard").catch(() => ({
     default: () => <div>Dashboard loading...</div>,
   }))
 );
 
 const AdminUserManagement = lazy(() =>
-  import("./pages/dashboards/AdminUserManagement").catch(() => ({
+  import("./features/admin/pages/AdminUserManagement").catch(() => ({
     default: () => <div>User management loading...</div>,
   }))
 );
 
 const AdminOrganizerManagement = lazy(() =>
-  import("./pages/dashboards/AdminOrganizerManagement").catch(() => ({
+  import("./features/admin/pages/AdminOrganizerManagement").catch(() => ({
     default: () => <div>Organizer management loading...</div>,
   }))
 );
 
 const AdminCoordinatorManagement = lazy(() =>
-  import("./pages/dashboards/AdminCoordinatorManagement").catch(() => ({
+  import("./features/admin/pages/AdminCoordinatorManagement").catch(() => ({
     default: () => <div>Coordinator management loading...</div>,
   }))
 );
 
 const AdminNotifications = lazy(() =>
-  import("./pages/dashboards/AdminNotifications").catch(() => ({
+  import("./features/admin/pages/AdminNotifications").catch(() => ({
     default: () => <div>Notifications loading...</div>,
   }))
 );
 
 const OrganizerDashboard = lazy(() =>
-  import("./pages/dashboards/OrganizerDashboard").catch(() => ({
+  import("./features/organizer/pages/OrganizerDashboard").catch(() => ({
     default: () => <div>Dashboard loading...</div>,
   }))
 );
 
 const OrganizerCreateEvent = lazy(() =>
-  import("./pages/dashboards/OrganizerCreateEvent").catch(() => ({
+  import("./features/organizer/pages/OrganizerCreateEvent").catch(() => ({
     default: () => <div>Create event loading...</div>,
   }))
 );
 
+const OrganizerEditEvent = lazy(() =>
+  import("./features/organizer/pages/OrganizerEditEvent").catch(() => ({
+    default: () => <div>Edit event loading...</div>,
+  }))
+);
+
+const OrganizerCoordinatorManagement = lazy(() =>
+  import("./features/organizer/pages/OrganizerCoordinatorManagement").catch(() => ({
+    default: () => <div>Coordinator management loading...</div>,
+  }))
+);
+
 const OrganizerContactAdmin = lazy(() =>
-  import("./pages/dashboards/OrganizerContactAdmin").catch(() => ({
+  import("./features/organizer/pages/OrganizerContactAdmin").catch(() => ({
     default: () => <div>Contact admin loading...</div>,
   }))
 );
 
 const CoordinatorDashboard = lazy(() =>
-  import("./pages/dashboards/CoordinatorDashboard").catch(() => ({
+  import("./features/coordinator/pages/CoordinatorDashboard").catch(() => ({
     default: () => <div>Dashboard loading...</div>,
   }))
 );
 
 const CoordinatorContactAdmin = lazy(() =>
-  import("./pages/dashboards/CoordinatorContactAdmin").catch(() => ({
+  import("./features/coordinator/pages/CoordinatorContactAdmin").catch(() => ({
     default: () => <div>Contact admin loading...</div>,
   }))
 );
 
 const StudentDashboard = lazy(() =>
-  import("./pages/dashboards/StudentDashboard").catch(() => ({
+  import("./features/student/pages/StudentDashboard").catch(() => ({
     default: () => <div>Dashboard loading...</div>,
   }))
 );
 
 const StudentLayout = lazy(() =>
-  import("./pages/dashboards/StudentLayout").catch(() => ({
+  import("./features/student/pages/StudentLayout").catch(() => ({
     default: () => <div>Dashboard loading...</div>,
   }))
 );
 
 const StudentEvents = lazy(() =>
-  import("./pages/dashboards/StudentEvents").catch(() => ({
+  import("./features/student/pages/StudentEvents").catch(() => ({
     default: () => <div>Events loading...</div>,
   }))
 );
 
+const StudentEventDetails = lazy(() =>
+  import("./features/student/pages/StudentEventDetails").catch(() => ({
+    default: () => <div>Event details loading...</div>,
+  }))
+);
+
 const StudentMyEvents = lazy(() =>
-  import("./pages/dashboards/StudentMyEvents").catch(() => ({
+  import("./features/student/pages/StudentMyEvents").catch(() => ({
     default: () => <div>My events loading...</div>,
   }))
 );
 
 const StudentContactUs = lazy(() =>
-  import("./pages/dashboards/StudentContactUs").catch(() => ({
+  import("./features/student/pages/StudentContactUs").catch(() => ({
     default: () => <div>Contact loading...</div>,
   }))
 );
 
 const MyCertificates = lazy(() =>
-  import("./pages/MyCertificates").catch(() => ({
+  import("./features/student/pages/MyCertificates").catch(() => ({
     default: () => <div>Loading certificates...</div>,
   }))
 );
+
+const routeMotionVariants = {
+  initial: { opacity: 0, y: 18, scale: 0.992, filter: "blur(6px)" },
+  animate: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" },
+  exit: { opacity: 0, y: -12, scale: 0.996, filter: "blur(4px)" },
+};
+
+const routeMotionTransition = {
+  duration: 0.42,
+  ease: [0.22, 1, 0.36, 1],
+};
 
 function ProtectedRoute({ children, requiredRole }) {
   const user = getStoredUser();
@@ -132,12 +163,44 @@ function ProtectedRoute({ children, requiredRole }) {
   return children;
 }
 
+function AmbientBackdrop({ variant = "dashboard" }) {
+  return (
+    <div className={`eventmate-ambient eventmate-ambient-${variant}`} aria-hidden="true">
+      <span className="eventmate-orb eventmate-orb-one" />
+      <span className="eventmate-orb eventmate-orb-two" />
+      <span className="eventmate-orb eventmate-orb-three" />
+      <span className="eventmate-scanline" />
+    </div>
+  );
+}
+
+function AnimatedOutlet() {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={`${location.pathname}${location.search}`}
+        variants={routeMotionVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={routeMotionTransition}
+        className="eventmate-route-shell"
+      >
+        <Outlet />
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 function MainLayout() {
   return (
-    <div className="flex flex-col min-h-screen overflow-x-hidden bg-gradient-to-br from-purple-50 via-indigo-50 to-white dark:from-gray-900 dark:via-purple-900/20 dark:to-black transition-colors duration-500">
+    <div className="eventmate-app-shell eventmate-app-shell-public relative isolate flex min-h-screen flex-col overflow-x-hidden transition-colors duration-500">
+      <AmbientBackdrop variant="public" />
       <Navbar variant="public" />
-      <main className="flex-1">
-        <Outlet />
+      <main className="relative z-[1] flex-1">
+        <AnimatedOutlet />
       </main>
       <Footer />
     </div>
@@ -163,7 +226,8 @@ function DashboardLayout() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen overflow-x-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="eventmate-app-shell eventmate-app-shell-dashboard relative isolate flex min-h-screen flex-col overflow-x-hidden">
+      <AmbientBackdrop variant="dashboard" />
       {!hideTopNav && (
         <Navbar
           activePage={null}
@@ -172,8 +236,8 @@ function DashboardLayout() {
           onLogout={handleLogout}
         />
       )}
-      <main className="flex-1">
-        <Outlet />
+      <main className="relative z-[1] flex-1">
+        <AnimatedOutlet />
       </main>
       <Footer />
     </div>
@@ -272,6 +336,28 @@ export default function App() {
           />
 
           <Route
+            path="/organizer-dashboard/edit-event/:eventId"
+            element={
+              <ProtectedRoute requiredRole="ORGANIZER">
+                <Suspense fallback={<div className="p-8 text-center">Loading Edit Event...</div>}>
+                  <OrganizerEditEvent />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/organizer-dashboard/coordinator-management"
+            element={
+              <ProtectedRoute requiredRole="ORGANIZER">
+                <Suspense fallback={<div className="p-8 text-center">Loading Coordinator Management...</div>}>
+                  <OrganizerCoordinatorManagement />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/organizer-dashboard/contact-admin"
             element={
               <ProtectedRoute requiredRole="ORGANIZER">
@@ -349,6 +435,22 @@ export default function App() {
               }
             />
             <Route
+              path="events/:eventId"
+              element={
+                <Suspense fallback={<div className="p-8 text-center">Loading Event Details...</div>}>
+                  <StudentEventDetails />
+                </Suspense>
+              }
+            />
+            <Route
+              path="events/:eventId/register"
+              element={
+                <Suspense fallback={<div className="p-8 text-center">Loading Registration Form...</div>}>
+                  <StudentEventDetails mode="register" />
+                </Suspense>
+              }
+            />
+            <Route
               path="my-events"
               element={
                 <Suspense fallback={<div className="p-8 text-center">Loading My Events...</div>}>
@@ -393,7 +495,7 @@ export default function App() {
           />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );

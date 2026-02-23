@@ -33,6 +33,69 @@ const EventSchema = new mongoose.Schema(
       }
     ],
 
+    participants: [
+      {
+        studentId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        name: String,
+        email: String,
+        status: {
+          type: String,
+          enum: ["REGISTERED", "CANCELLED", "ATTENDED"],
+          default: "REGISTERED",
+        },
+        registrationType: {
+          type: String,
+          enum: ["INDIVIDUAL", "TEAM"],
+          default: "INDIVIDUAL",
+        },
+        teamName: {
+          type: String,
+          trim: true,
+          default: undefined,
+        },
+        headCount: {
+          type: Number,
+          default: 1,
+        },
+        participantProfile: {
+          fullName: String,
+          email: String,
+          mobileNumber: String,
+          collegeName: String,
+          branch: String,
+          year: String,
+        },
+        teamMembers: [
+          {
+            fullName: String,
+            email: String,
+            mobileNumber: String,
+            collegeName: String,
+            branch: String,
+            year: String,
+          },
+        ],
+        declarations: {
+          studentAuthenticity: {
+            type: Boolean,
+            default: false,
+          },
+          certificateAwareness: {
+            type: Boolean,
+            default: false,
+          },
+        },
+        registeredAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
     venue: {
       mode: {
         type: String,
@@ -53,6 +116,15 @@ const EventSchema = new mongoose.Schema(
       isOpen: Boolean,
       lastDate: Date,
       maxParticipants: Number,
+      participationMode: {
+        type: String,
+        enum: ["INDIVIDUAL", "TEAM", "BOTH"],
+        default: "INDIVIDUAL",
+      },
+      maxTeamMembers: {
+        type: Number,
+        default: 4,
+      },
       fee: {
         type: Number,
         default: 0

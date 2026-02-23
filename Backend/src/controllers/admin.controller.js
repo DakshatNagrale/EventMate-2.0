@@ -13,7 +13,28 @@ export const getAllUsersController = asyncHandler(async (req, res) => {
 
 // ---------------- UPDATE USER ----------------
 export const updateUserController = asyncHandler(async (req, res) => {
-  const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const updates = { ...(req.body || {}) };
+
+  if (Object.prototype.hasOwnProperty.call(updates, "emailVerified")) {
+    return res.status(400).json({
+      success: false,
+      message: "Email verification status is system managed and cannot be edited.",
+    });
+  }
+
+  if (!Object.keys(updates).length) {
+    return res.status(400).json({ success: false, message: "No editable fields provided." });
+  }
+
+  const user = await User.findByIdAndUpdate(req.params.id, updates, {
+    new: true,
+    runValidators: true,
+  }).select("-password -refreshToken");
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found." });
+  }
+
   res.json({ success: true, message: "User updated", user });
 });
 
@@ -123,7 +144,14 @@ export const updateOrganizerController = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: "Organizer not found." });
   }
 
-  const { fullName, email, isActive, department, mobileNumber, emailVerified } = req.body;
+  const { fullName, email, isActive, department, mobileNumber } = req.body;
+
+  if (typeof req.body?.emailVerified !== "undefined") {
+    return res.status(400).json({
+      success: false,
+      message: "Email verification status is system managed and cannot be edited.",
+    });
+  }
 
   if (typeof fullName !== "undefined") {
     if (!fullName || String(fullName).trim().length < 3) {
@@ -148,10 +176,6 @@ export const updateOrganizerController = asyncHandler(async (req, res) => {
 
   if (typeof isActive === "boolean") {
     organizer.isActive = isActive;
-  }
-
-  if (typeof emailVerified === "boolean") {
-    organizer.emailVerified = emailVerified;
   }
 
   if (typeof department !== "undefined") {
@@ -287,7 +311,14 @@ export const updateCoordinatorController = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: "Coordinator not found." });
   }
 
-  const { fullName, email, mobileNumber, assignedEventId, scope, status, isActive, emailVerified } = req.body;
+  const { fullName, email, mobileNumber, assignedEventId, scope, status, isActive } = req.body;
+
+  if (typeof req.body?.emailVerified !== "undefined") {
+    return res.status(400).json({
+      success: false,
+      message: "Email verification status is system managed and cannot be edited.",
+    });
+  }
 
   if (typeof fullName !== "undefined") {
     if (!fullName || String(fullName).trim().length < 3) {
@@ -355,10 +386,6 @@ export const updateCoordinatorController = asyncHandler(async (req, res) => {
     } else if (coordinator.coordinatorProfile.status === "SUSPENDED") {
       coordinator.coordinatorProfile.status = "ACTIVE";
     }
-  }
-
-  if (typeof emailVerified === "boolean") {
-    coordinator.emailVerified = emailVerified;
   }
 
   await coordinator.save();

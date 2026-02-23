@@ -1,0 +1,12 @@
+{
+  "name": "eventmate-3-0",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm --prefix Backend run dev",
+    "dev:frontend": "npm --prefix Frontend run dev",
+    "start:backend": "npm --prefix Backend run start",
+    "build:frontend": "npm --prefix Frontend run build",
+    "create-admin": "npm --prefix Backend run create-admin",
+    "check:backend": "npm --prefix Backend run check"
+  }
+}
